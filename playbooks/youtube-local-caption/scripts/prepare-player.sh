@@ -60,5 +60,5 @@ cp "$en_file" "$output_dir/captions.en.vtt"
 
 ffprobe -v error -show_entries format=duration:stream=codec_type,codec_name -of default=noprint_wrappers=1 "$output_dir/video.mp4" > "$output_dir/media-info.txt"
 
-caption_note "Player prepared: $output_dir"
+caption_note "Standalone player export prepared: $output_dir"
 caption_note "Start it with serve-player.sh; do not open index.html through file://"

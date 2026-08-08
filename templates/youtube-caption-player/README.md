@@ -1,6 +1,8 @@
 # YouTube 本機字幕播放器模板
 
-這是一個不需要建置工具的靜態播放器。它播放本機 MP4，以 JavaScript 讀取外部 VTT，並依影片時間切換繁體中文與英文字幕。Plyr 提供主要控制介面；CDN 無法使用時會退回瀏覽器原生 `<video controls>`。
+這是一個不需要建置工具的靜態播放器。它播放本機 MP4，以 JavaScript 讀取外部 VTT，並依影片時間切換字幕。Plyr 提供主要控制介面；CDN 無法使用時會退回瀏覽器原生 `<video controls>`。
+
+模板有兩種用途：影片庫透過 `/watch/<video-id>/?embed=1` 動態注入設定並放在 iframe modal；`prepare-player.sh` 則可選擇性匯出一支獨立播放器。嵌入模式會用同源 `postMessage` 回報 ready、播放時間與狀態，並接受 pause、seek 與字幕切換命令。
 
 ## 完成資料夾
 
@@ -61,9 +63,9 @@ python3 -m http.server 8000 --bind 127.0.0.1 --directory <player-directory>
 
 ## 日常使用
 
-再次使用只要重新啟動 HTTP server，不需要重新安裝工具。換影片時建議建立新的 `jobs/<video-id>/player/`，不要直接覆蓋仍需保留的上一支影片。
+影片庫的日常入口是 `serve-library.sh`，不需要替每支影片建立 `player/`。再次使用只要重新啟動同一個 server，首頁會掃描 `jobs/<video-id>/`。
 
-播放器使用固定命名的版本可由 `prepare-player.sh` 建立；它會先驗證 VTT 和媒體，再複製模板與素材。
+只有需要攜出單支影片時，才用 `prepare-player.sh` 建立固定命名的 export；它會先驗證 VTT 和媒體，再複製模板與素材。
 
 ## 更新模板
 

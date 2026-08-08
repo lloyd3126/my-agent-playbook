@@ -6,7 +6,7 @@
 
 給 Agent 一個明確的目標，並指定對應 playbook。例如：
 
-> 請依照 `playbooks/youtube-local-caption/PLAYBOOK.md` 處理這支影片，從環境檢查開始，產生繁體中文與英文字幕播放器；完成後告訴我安裝了什麼，以及如何移除。
+> 請依照 `playbooks/youtube-local-caption/PLAYBOOK.md` 建立固定的本機影片庫首頁，從環境檢查開始，把這支影片加入佇列並產生繁體中文與英文字幕；完成後告訴我安裝了什麼、下次怎麼用，以及如何移除。
 
 > 請依照 `playbooks/x-account-research.md` 更新 Serenity 最近 7 天的公開內容，只讀取與整理，不要與帳號互動。
 
@@ -30,7 +30,8 @@ my-agent-playbook/
 │       ├── scripts/
 │       └── references/
 ├── templates/                        # 可以複製使用的成品骨架
-│   └── youtube-caption-player/
+│   ├── youtube-library/              # 固定首頁、狀態表與 iframe modal
+│   └── youtube-caption-player/       # 可嵌入或獨立播放
 ├── knowledge/                        # 可持續更新的研究與背景資料
 │   └── x/accounts/
 └── examples/                         # 不含大型媒體的使用範例
@@ -43,11 +44,12 @@ my-agent-playbook/
 | 發布 X 串文 | [X 串文發布](playbooks/x-thread-publishing.md) | 會；每次發布前需要明確確認 |
 | 整理 X 帳號 | [X 帳號研究](playbooks/x-account-research.md) | 不會；預設只讀 |
 | 財報狗研究 | [財報狗公司與產業研究](playbooks/statementdog-company-analysis.md) | 不會；預設只讀 |
-| YouTube 本機字幕播放器 | [YouTube 本機字幕流程](playbooks/youtube-local-caption/PLAYBOOK.md) | 會建立本機檔案；下載前確認權利與範圍 |
+| YouTube 本機影片庫與字幕 | [YouTube 本機字幕流程](playbooks/youtube-local-caption/PLAYBOOK.md) | 會建立本機檔案；下載前確認權利與範圍 |
 
 ## Templates
 
-- [YouTube 本機字幕播放器](templates/youtube-caption-player/README.md)：播放本機 MP4，以 VTT 顯示並切換繁體中文與英文字幕。
+- [YouTube 本機影片庫首頁](templates/youtube-library/README.md)：固定首頁、任務狀態表、log、搜尋／篩選與 iframe modal。
+- [YouTube 本機字幕播放器](templates/youtube-caption-player/README.md)：播放本機 MP4，以 VTT 顯示並切換字幕，可獨立匯出或嵌入影片庫。
 
 ## Knowledge
 
@@ -82,4 +84,3 @@ my-agent-playbook/
 - `.venv`、套件快取、Deno／uv 執行檔
 - cookie、token、密碼、瀏覽器 profile
 - 未取得再散布權利的內容
-

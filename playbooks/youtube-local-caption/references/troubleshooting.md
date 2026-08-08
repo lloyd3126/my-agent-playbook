@@ -48,9 +48,25 @@ Whisper 需要真正的 FFmpeg 命令列工具，不是 `pip install ffmpeg`。
 - YouTube VTT 可能在時間戳與文字間插入空行；模板 parser 已兼容，但仍要檢查內容不是空檔或錯誤頁面。
 - 確認檔案是 UTF-8，而且沒有把 JSON 或 HTML 錯誤內容存成 `.vtt`。
 
+## 首頁顯示處理中，但 terminal 已經停止
+
+首頁會檢查 active job 的 PID 和最後更新時間。程序消失超過約 45 秒後，`effectiveState` 會顯示「已中斷」，但不會擅自修改原始 `status.json`。先打開詳細資料看 log，確認 `video.mp4`、音訊或 VTT 是否已完成，再只重跑對應命令。
+
+不要只把狀態手動改成 `ready`；`ready` 但缺 `source/video.mp4` 會被首頁視為失敗。
+
+## 首頁可以開，但影片拖曳或播放失敗
+
+請使用 `serve-library.sh`。一般靜態 server 沒有 job API，也不保證正確處理 Range request。
+
+```bash
+playbooks/youtube-local-caption/scripts/serve-library.sh <workspace> 8000
+```
+
+確認瀏覽器 network 中 `/media/VIDEO_ID/video` 回傳 `200` 或 `206`，以及 `ffprobe` 顯示 MP4 同時有視訊與音訊 stream。影片庫只認固定路徑 `<workspace>/jobs/VIDEO_ID/source/video.mp4`。
+
 ## `file://` 可以播放影片但字幕載入失敗
 
-瀏覽器通常會限制本機頁面 `fetch` 其他檔案。用 `serve-player.sh` 啟動 `http://127.0.0.1:<port>/`，不要直接雙擊 HTML。
+瀏覽器通常會限制本機頁面 `fetch` 其他檔案。日常使用 `serve-library.sh`；獨立 export 才使用 `serve-player.sh`。不要直接雙擊 HTML。
 
 ## Plyr 載入失敗或離線
 
@@ -79,7 +95,7 @@ Whisper 需要真正的 FFmpeg 命令列工具，不是 `pip install ffmpeg`。
 此流程預設使用 CPU。若手動指定 MPS 後 crash，改回：
 
 ```bash
-transcribe.sh <workspace> <audio> <output> --model turbo --device cpu
+transcribe.sh <workspace> <video-id> --model turbo --device cpu
 ```
 
 CPU 可能較慢，但通常比反覆 crash 更可預期。
@@ -96,8 +112,26 @@ CPU 可能較慢，但通常比反覆 crash 更可預期。
 改用其他 port，例如：
 
 ```bash
-serve-player.sh <workspace> <player-directory> 8010
+serve-library.sh <workspace> 8010
 ```
 
 如果上一個 server 還在執行，先回到其 terminal 按 `Ctrl+C`；不要任意終止不確定來源的程序。
 
+## 首頁沒有出現新影片
+
+- 確認存在 `<workspace>/jobs/VIDEO_ID/status.json`。
+- `status.json` 必須是 JSON object，而且 `videoId` 只能含英數字、底線與連字號。
+- 首頁每 2.5 秒更新；可按右上重新整理按鈕。
+- 確認啟動 server 時使用的是同一個 workspace。
+- 看 terminal 是否有 `/api/jobs` 的 `500`。狀態檔無法解析時，修復 JSON；不要刪除整個 job。
+
+## iframe modal 是黑畫面
+
+- 等待 player 的 metadata 載入；大型 MP4 第一個 Range request 可能稍久。
+- 開啟詳細資料確認 job 可觀看且 `video.mp4` 存在。
+- Plyr CDN 被網路阻擋時應出現瀏覽器原生 controls，不會阻止本機影片播放。
+- `video.mp4` codec 不相容時重新檢查 `ffprobe.txt`，必要時用 FFmpeg 轉為 H.264 + AAC；先保留原檔，不直接覆蓋唯一副本。
+
+## 翻譯檔匯入失敗
+
+`import-caption.sh` 要求 UTF-8 VTT、`WEBVTT` header 與至少一個 `-->` cue。目的 track 已存在時預設拒絕覆蓋；確認新檔正確後才加 `--force`。語言代碼使用 `zh-TW`，檔案會成為 `captions/zh-TW.vtt`。

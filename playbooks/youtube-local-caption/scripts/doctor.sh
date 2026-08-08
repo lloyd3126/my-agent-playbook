@@ -2,6 +2,7 @@
 set -u
 
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd -P)
+REPO_ROOT=$(cd "$SCRIPT_DIR/../../.." && pwd -P)
 . "$SCRIPT_DIR/lib.sh"
 
 if [ "$#" -eq 1 ] && { [ "$1" = "-h" ] || [ "$1" = "--help" ]; }; then
@@ -83,6 +84,23 @@ if [ -d "$CAPTION_MODELS" ]; then
   printf 'whisper-model-files: %s\n' "$model_count"
 else
   printf 'whisper-model-files: 0\n'
+fi
+
+if [ -f "$REPO_ROOT/templates/youtube-library/index.html" ] && [ -f "$CAPTION_LIBRARY_SERVER" ]; then
+  printf 'library-template: available\n'
+else
+  printf 'library-template: missing\n'
+  missing=1
+fi
+
+if [ -d "$CAPTION_JOBS" ]; then
+  job_count=$(find "$CAPTION_JOBS" -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')
+  status_count=$(find "$CAPTION_JOBS" -mindepth 2 -maxdepth 2 -type f -name status.json | wc -l | tr -d ' ')
+  printf 'library-jobs: %s\n' "$job_count"
+  printf 'library-status-files: %s\n' "$status_count"
+else
+  printf 'library-jobs: 0\n'
+  printf 'library-status-files: 0\n'
 fi
 
 if [ "$missing" -eq 0 ]; then

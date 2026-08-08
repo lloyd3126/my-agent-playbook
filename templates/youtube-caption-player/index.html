@@ -234,6 +234,36 @@
         line-height: 1.5;
       }
 
+      body.embed {
+        min-height: 0;
+        overflow: hidden;
+        background: #000;
+      }
+
+      body.embed::before,
+      body.embed .masthead,
+      body.embed .control-deck,
+      body.embed .footnote {
+        display: none;
+      }
+
+      body.embed main {
+        width: 100%;
+        margin: 0;
+        padding: 0;
+      }
+
+      body.embed .player-shell {
+        border: 0;
+        box-shadow: none;
+      }
+
+      body.embed .player-wrap {
+        width: 100vw;
+        height: 100vh;
+        aspect-ratio: auto;
+      }
+
       @media (max-width: 720px) {
         main {
           width: min(100% - 24px, 1180px);
@@ -339,6 +369,7 @@
         "use strict";
 
         const defaults = {
+          videoId: "standalone",
           title: "本機字幕播放室",
           kicker: "Local screening · transcript edition",
           video: { src: "video.mp4", type: "video/mp4" },
@@ -370,6 +401,15 @@
         let activeCues = [];
         let lastCueIndex = -1;
         let animationFrame = 0;
+        let lastTimeMessage = 0;
+
+        const isEmbedded = window.parent !== window && new URLSearchParams(window.location.search).get("embed") === "1";
+        if (isEmbedded) document.body.classList.add("embed");
+
+        function postToParent(type, extra = {}) {
+          if (!isEmbedded) return;
+          window.parent.postMessage({ type, videoId: config.videoId, ...extra }, window.location.origin);
+        }
 
         document.title = config.title;
         pageTitle.textContent = config.title;
@@ -508,7 +548,10 @@
         }
 
         let player = null;
-        if (typeof window.Plyr === "function") {
+        if (isEmbedded) {
+          engineLabel.textContent = "ENGINE · NATIVE EMBED";
+          setPlaybackStatus("嵌入式播放器已建立。", "READY");
+        } else if (typeof window.Plyr === "function") {
           player = new window.Plyr(video, { ratio: "16:9", captions: { active: false } });
           engineLabel.textContent = "ENGINE · PLYR + NATIVE FALLBACK";
           player.on("ready", () => setPlaybackStatus("播放器與字幕介面已建立。", "READY"));
@@ -521,21 +564,37 @@
         video.addEventListener("loadedmetadata", () => {
           const duration = Number.isFinite(video.duration) ? Math.round(video.duration) : 0;
           setPlaybackStatus(`影片已載入，長度約 ${duration} 秒。`, "READY");
+          postToParent("player:ready", { duration: video.duration });
         });
         video.addEventListener("playing", () => {
           setPlaybackStatus("播放中；字幕依本機時間軸同步。", "PLAYING");
           cancelAnimationFrame(animationFrame);
           animationFrame = requestAnimationFrame(followPlayback);
+          postToParent("player:playing", { time: video.currentTime });
         });
         video.addEventListener("pause", () => {
           cancelAnimationFrame(animationFrame);
           updateCaption();
           if (!video.ended) setPlaybackStatus("已暫停。", "PAUSED");
+          postToParent("player:paused", { time: video.currentTime });
         });
         video.addEventListener("seeking", updateCaption);
-        video.addEventListener("timeupdate", updateCaption);
-        video.addEventListener("ended", () => setPlaybackStatus("播放完畢。", "ENDED"));
-        video.addEventListener("error", () => setPlaybackStatus("影片載入失敗；請確認 video.mp4 存在並透過 HTTP 開啟。", "ERROR"));
+        video.addEventListener("timeupdate", () => {
+          updateCaption();
+          const now = Date.now();
+          if (now - lastTimeMessage >= 1500) {
+            postToParent("player:time", { time: video.currentTime, duration: video.duration });
+            lastTimeMessage = now;
+          }
+        });
+        video.addEventListener("ended", () => {
+          setPlaybackStatus("播放完畢。", "ENDED");
+          postToParent("player:ended", { duration: video.duration });
+        });
+        video.addEventListener("error", () => {
+          setPlaybackStatus("影片載入失敗；請確認 video.mp4 存在並透過 HTTP 開啟。", "ERROR");
+          postToParent("player:error", { code: video.error?.code || 0 });
+        });
 
         captionLanguage.addEventListener("change", async () => {
           try {
@@ -552,6 +611,30 @@
           : config.captions[0]?.code || "off";
         captionLanguage.value = configuredDefault;
         loadCaptions(configuredDefault).catch((error) => setCaptionMessage(error.message, true));
+
+        window.addEventListener("message", (event) => {
+          if (!isEmbedded || event.source !== window.parent || event.origin !== window.location.origin) return;
+          const message = event.data || {};
+          if (message.type === "player:pause") video.pause();
+          if (message.type === "player:dispose") {
+            video.pause();
+            cancelAnimationFrame(animationFrame);
+            if (player && typeof player.destroy === "function") player.destroy();
+            postToParent("player:disposed", { time: video.currentTime });
+          }
+          if (message.type === "player:seek" && Number.isFinite(message.time)) {
+            const upper = Number.isFinite(video.duration) ? Math.max(0, video.duration - 1) : message.time;
+            video.currentTime = Math.max(0, Math.min(message.time, upper));
+            updateCaption();
+          }
+          if (message.type === "player:set-caption" && typeof message.language === "string") {
+            const available = [...captionLanguage.options].some((option) => option.value === message.language);
+            if (available) {
+              captionLanguage.value = message.language;
+              captionLanguage.dispatchEvent(new Event("change"));
+            }
+          }
+        });
       })();
     </script>
   </body>

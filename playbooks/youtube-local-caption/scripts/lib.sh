@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+CAPTION_PLAYBOOK_SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)
+
 caption_die() {
   printf 'error: %s\n' "$*" >&2
   exit 1
@@ -49,6 +51,11 @@ caption_set_paths() {
   CAPTION_PYTHON="$CAPTION_VENV/bin/python"
   CAPTION_YTDLP="$CAPTION_VENV/bin/yt-dlp"
   CAPTION_WHISPER="$CAPTION_VENV/bin/whisper"
+  CAPTION_JOBS="$CAPTION_WORKSPACE/jobs"
+  CAPTION_JOB_STATE="$CAPTION_PLAYBOOK_SCRIPT_DIR/job_state.py"
+  CAPTION_PROGRESS_RUNNER="$CAPTION_PLAYBOOK_SCRIPT_DIR/run_progress.py"
+  CAPTION_LIBRARY_SERVER="$CAPTION_PLAYBOOK_SCRIPT_DIR/library_server.py"
+  CAPTION_LIBRARY_PID="$CAPTION_WORKSPACE/.youtube-local-caption-server.pid"
 
   export UV_CACHE_DIR="$CAPTION_UV_CACHE"
   export UV_PYTHON_INSTALL_DIR="$CAPTION_UV_PYTHON"
@@ -68,6 +75,27 @@ caption_require_runtime() {
   [ -x "$CAPTION_PYTHON" ] || caption_die "runtime is not installed: run setup-environment.sh first"
   [ -x "$CAPTION_YTDLP" ] || caption_die "yt-dlp is missing: run setup-environment.sh first"
   [ -x "$CAPTION_DENO" ] || caption_die "Deno is missing: run setup-environment.sh first"
+}
+
+caption_require_python() {
+  [ -x "$CAPTION_PYTHON" ] || caption_die "workflow Python is missing: run setup-environment.sh first"
+}
+
+caption_job_state() {
+  caption_require_python
+  "$CAPTION_PYTHON" "$CAPTION_JOB_STATE" "$@"
+}
+
+caption_validate_video_id() {
+  case "$1" in
+    ''|*[!A-Za-z0-9_-]*) caption_die "invalid video ID: $1" ;;
+  esac
+}
+
+caption_validate_language() {
+  case "$1" in
+    ''|*[!A-Za-z0-9_-]*) caption_die "invalid language code: $1" ;;
+  esac
 }
 
 caption_require_file() {
