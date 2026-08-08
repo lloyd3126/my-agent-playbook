@@ -73,6 +73,20 @@ class LibraryApplicationTests(unittest.TestCase):
             self.assertEqual(summary["captionCodes"], ["zh-TW"])
             self.assertEqual(config["defaultLanguage"], "zh-TW")
             self.assertEqual(config["video"]["src"], "/media/video-id/video")
+            self.assertEqual(summary["playback"]["time"], 0.0)
+
+    def test_playback_state_is_validated_and_written_atomically(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            workspace = Path(temporary)
+            job_dir = workspace / "jobs" / "progress-id"
+            initialize_job(job_dir, "progress-id", "https://example.test", "Progress")
+            application = self.make_application(workspace)
+            saved = application.save_playback_state("progress-id", {"time": 42.1254, "duration": 120.0})
+            self.assertEqual(saved["time"], 42.125)
+            self.assertEqual(application.playback_state(job_dir)["duration"], 120.0)
+            self.assertFalse(any(job_dir.glob(".ui-state.json.*.tmp")))
+            with self.assertRaises(ValueError):
+                application.save_playback_state("progress-id", {"time": 999, "duration": 10})
 
     def test_stale_active_job_is_reported_as_interrupted(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

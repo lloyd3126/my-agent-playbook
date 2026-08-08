@@ -41,7 +41,6 @@ caption_validate_language "$track_code"
 caption_set_paths "$workspace_input"
 caption_assert_safe_workspace
 caption_require_runtime
-caption_require_command ffmpeg
 
 job_dir="$CAPTION_JOBS/$video_id"
 source_dir="$job_dir/source"
@@ -65,7 +64,7 @@ if [ ! -f "$audio_file" ]; then
   caption_note "Extracting an audio copy from video.mp4..."
   "$CAPTION_PYTHON" "$CAPTION_PROGRESS_RUNNER" \
     --job-dir "$job_dir" --state transcribing --stage extracting_audio --message "正在從影片擷取音訊" --success-message "音訊擷取完成" -- \
-    ffmpeg -nostdin -hide_banner -y -i "$video_file" -vn -c:a aac -b:a 192k "$audio_file"
+    "$CAPTION_FFMPEG" -nostdin -hide_banner -y -i "$video_file" -vn -c:a aac -b:a 192k "$audio_file"
   caption_job_state asset --job-dir "$job_dir" --name audio --path "$audio_file" >/dev/null
 fi
 

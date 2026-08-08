@@ -37,6 +37,9 @@ caption_abs_path() {
 caption_set_paths() {
   [ "$#" -eq 1 ] || caption_die "caption_set_paths requires one workspace path"
 
+  if [ -z "${CAPTION_SYSTEM_HOME+x}" ]; then
+    CAPTION_SYSTEM_HOME="${HOME:-}"
+  fi
   CAPTION_WORKSPACE=$(caption_abs_path "$1")
   CAPTION_RUNTIME="$CAPTION_WORKSPACE/.agent-tools/youtube-local-caption"
   CAPTION_BIN="$CAPTION_RUNTIME/bin"
@@ -45,9 +48,21 @@ caption_set_paths() {
   CAPTION_UV_CACHE="$CAPTION_RUNTIME/uv-cache"
   CAPTION_UV_PYTHON="$CAPTION_RUNTIME/python"
   CAPTION_DENO_CACHE="$CAPTION_RUNTIME/deno-cache"
+  CAPTION_XDG_CACHE="$CAPTION_RUNTIME/xdg-cache"
+  CAPTION_PYTHON_CACHE="$CAPTION_RUNTIME/python-cache"
+  CAPTION_TORCH_CACHE="$CAPTION_RUNTIME/torch-cache"
+  CAPTION_TIKTOKEN_CACHE="$CAPTION_RUNTIME/tiktoken-cache"
+  CAPTION_HF_CACHE="$CAPTION_RUNTIME/huggingface-cache"
+  CAPTION_YTDLP_CACHE="$CAPTION_RUNTIME/yt-dlp-cache"
+  CAPTION_TEMP="$CAPTION_RUNTIME/tmp"
+  CAPTION_LOCAL_HOME="$CAPTION_RUNTIME/home"
+  CAPTION_XDG_CONFIG="$CAPTION_RUNTIME/xdg-config"
+  CAPTION_XDG_DATA="$CAPTION_RUNTIME/xdg-data"
+  CAPTION_XDG_STATE="$CAPTION_RUNTIME/xdg-state"
   CAPTION_STATE="$CAPTION_RUNTIME/install-state.env"
   CAPTION_UV="$CAPTION_BIN/uv"
   CAPTION_DENO="$CAPTION_BIN/deno"
+  CAPTION_FFMPEG="$CAPTION_BIN/ffmpeg"
   CAPTION_PYTHON="$CAPTION_VENV/bin/python"
   CAPTION_YTDLP="$CAPTION_VENV/bin/yt-dlp"
   CAPTION_WHISPER="$CAPTION_VENV/bin/whisper"
@@ -61,12 +76,23 @@ caption_set_paths() {
   export UV_PYTHON_INSTALL_DIR="$CAPTION_UV_PYTHON"
   export UV_PYTHON_BIN_DIR="$CAPTION_BIN"
   export DENO_DIR="$CAPTION_DENO_CACHE"
+  export XDG_CACHE_HOME="$CAPTION_XDG_CACHE"
+  export PYTHONPYCACHEPREFIX="$CAPTION_PYTHON_CACHE"
+  export TORCH_HOME="$CAPTION_TORCH_CACHE"
+  export TIKTOKEN_CACHE_DIR="$CAPTION_TIKTOKEN_CACHE"
+  export HF_HOME="$CAPTION_HF_CACHE"
+  export IMAGEIO_FFMPEG_EXE="$CAPTION_FFMPEG"
+  export HOME="$CAPTION_LOCAL_HOME"
+  export XDG_CONFIG_HOME="$CAPTION_XDG_CONFIG"
+  export XDG_DATA_HOME="$CAPTION_XDG_DATA"
+  export XDG_STATE_HOME="$CAPTION_XDG_STATE"
+  export TMPDIR="$CAPTION_TEMP"
 }
 
 caption_assert_safe_workspace() {
   [ -n "${CAPTION_WORKSPACE:-}" ] || caption_die "workspace is not initialized"
   [ "$CAPTION_WORKSPACE" != "/" ] || caption_die "refusing to use the filesystem root as workspace"
-  if [ -n "${HOME:-}" ] && [ "$CAPTION_WORKSPACE" = "$HOME" ]; then
+  if [ -n "${CAPTION_SYSTEM_HOME:-}" ] && [ "$CAPTION_WORKSPACE" = "$CAPTION_SYSTEM_HOME" ]; then
     caption_die "refusing to use the home directory as workspace; choose a dedicated child directory"
   fi
 }
@@ -75,6 +101,7 @@ caption_require_runtime() {
   [ -x "$CAPTION_PYTHON" ] || caption_die "runtime is not installed: run setup-environment.sh first"
   [ -x "$CAPTION_YTDLP" ] || caption_die "yt-dlp is missing: run setup-environment.sh first"
   [ -x "$CAPTION_DENO" ] || caption_die "Deno is missing: run setup-environment.sh first"
+  [ -x "$CAPTION_FFMPEG" ] || caption_die "workflow-local FFmpeg is missing: run setup-environment.sh first"
 }
 
 caption_require_python() {

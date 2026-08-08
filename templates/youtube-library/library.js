@@ -12,7 +12,10 @@
   const TRACK_LABELS = { "zh-TW": "繁中", "zh-Hant": "繁中", en: "EN", ja: "JA", ko: "KO", source: "原文" };
   const DATE_FORMAT = new Intl.DateTimeFormat("zh-TW", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false });
   const TIME_FORMAT = new Intl.DateTimeFormat("zh-TW", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
-  const state = { jobs: [], query: "", filter: "all", selectedId: null, pollTimer: 0, unloadTimer: 0, loading: false, lastFocused: null };
+  const state = {
+    jobs: [], query: "", filter: "all", selectedId: null, pollTimer: 0, unloadTimer: 0,
+    playbackSaveTimer: 0, playbackTime: 0, playbackDuration: null, loading: false, lastFocused: null,
+  };
 
   const $ = (selector) => document.querySelector(selector);
   const elements = {
@@ -140,18 +143,39 @@
     }
   }
 
-  function resumeKey(videoId) { return `youtube-library:progress:${videoId}`; }
-
-  function loadResume(videoId) {
-    try { return Number(localStorage.getItem(resumeKey(videoId)) || 0); } catch { return 0; }
+  async function persistPlayback(videoId, time, duration) {
+    if (!videoId || !Number.isFinite(time)) return;
+    try {
+      const response = await fetch(`/api/jobs/${encodeURIComponent(videoId)}/playback`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ time: Math.max(0, time), duration: Number.isFinite(duration) && duration > 0 ? duration : null }),
+        keepalive: true,
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const saved = await response.json();
+      const job = state.jobs.find((item) => item.videoId === videoId);
+      if (job) job.playback = saved;
+    } catch (error) {
+      elements.resumeNote.textContent = `播放進度暫時無法寫入資料夾：${error.message}`;
+    }
   }
 
-  function saveResume(videoId, time) {
-    try { localStorage.setItem(resumeKey(videoId), String(time)); } catch { /* storage can be disabled */ }
-  }
-
-  function clearResume(videoId) {
-    try { localStorage.removeItem(resumeKey(videoId)); } catch { /* storage can be disabled */ }
+  function queuePlaybackSave(videoId, time, duration, immediate = false) {
+    state.playbackTime = time;
+    state.playbackDuration = duration;
+    if (immediate) {
+      window.clearTimeout(state.playbackSaveTimer);
+      state.playbackSaveTimer = 0;
+      persistPlayback(videoId, time, duration);
+      return;
+    }
+    if (!state.playbackSaveTimer) {
+      state.playbackSaveTimer = window.setTimeout(() => {
+        state.playbackSaveTimer = 0;
+        persistPlayback(videoId, state.playbackTime, state.playbackDuration);
+      }, 5000);
+    }
   }
 
   function openPlayer(job, trigger) {
@@ -166,14 +190,19 @@
     elements.modalCaption.replaceChildren(new Option("關閉", "off"));
     job.captionCodes?.forEach((code) => elements.modalCaption.add(new Option(TRACK_LABELS[code] || code, code)));
     elements.modalCaption.value = job.captionCodes?.includes("zh-TW") ? "zh-TW" : (job.captionCodes?.includes("en") ? "en" : (job.captionCodes?.[0] || "off"));
-    const saved = loadResume(job.videoId);
-    elements.resumeNote.textContent = saved > 10 ? `上次看到 ${formatDuration(saved)}，載入後將接續播放` : "播放進度只保存在這個瀏覽器";
+    const saved = Number(job.playback?.time) || 0;
+    state.playbackTime = saved;
+    state.playbackDuration = Number(job.playback?.duration) || null;
+    elements.resumeNote.textContent = saved > 10 ? `上次看到 ${formatDuration(saved)}，載入後將接續播放` : "播放進度保存在這個影片的資料夾內";
     elements.playerDialog.showModal();
     document.body.classList.add("dialog-open");
   }
 
   function closePlayer() {
     if (!elements.playerDialog.open) return;
+    if (state.selectedId && Number.isFinite(state.playbackTime)) {
+      queuePlaybackSave(state.selectedId, state.playbackTime, state.playbackDuration, true);
+    }
     elements.playerFrame.contentWindow?.postMessage({ type: "player:dispose" }, location.origin);
     elements.playerDialog.close();
     state.unloadTimer = window.setTimeout(() => {
@@ -181,6 +210,8 @@
     }, 120);
     elements.playerFrame.classList.remove("ready");
     state.selectedId = null;
+    state.playbackTime = 0;
+    state.playbackDuration = null;
     document.body.classList.toggle("dialog-open", elements.detailDialog.open);
     state.lastFocused?.focus();
   }
@@ -243,14 +274,21 @@
     if (message.type === "player:ready") {
       elements.playerLoading.hidden = true;
       elements.playerFrame.classList.add("ready");
-      const saved = loadResume(state.selectedId);
+      const saved = state.playbackTime;
       if (saved > 10 && (!Number.isFinite(message.duration) || saved < message.duration - 15)) {
         elements.playerFrame.contentWindow?.postMessage({ type: "player:seek", time: saved }, location.origin);
       }
       elements.playerFrame.contentWindow?.postMessage({ type: "player:set-caption", language: elements.modalCaption.value }, location.origin);
     }
-    if (message.type === "player:time" && Number.isFinite(message.time)) saveResume(state.selectedId, message.time);
-    if (message.type === "player:ended") clearResume(state.selectedId);
+    if (message.type === "player:time" && Number.isFinite(message.time)) {
+      queuePlaybackSave(state.selectedId, message.time, message.duration);
+    }
+    if (message.type === "player:paused" && Number.isFinite(message.time)) {
+      queuePlaybackSave(state.selectedId, message.time, message.duration, true);
+    }
+    if (message.type === "player:ended") {
+      queuePlaybackSave(state.selectedId, 0, message.duration, true);
+    }
     if (message.type === "player:error") {
       elements.playerLoading.hidden = true;
       elements.playerFrame.classList.add("ready");

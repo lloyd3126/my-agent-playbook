@@ -1,5 +1,3 @@
-@import url("https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&family=Oswald:wght@400;500;600&display=swap");
-
 :root {
   color-scheme: dark;
   --paper: #e7e3da;
@@ -14,8 +12,8 @@
   --amber: #efad47;
   --blue: #62a8ff;
   --red: #ff6c61;
-  --display: "Oswald", "Arial Narrow", sans-serif;
-  --sans: "Noto Sans TC", "PingFang TC", sans-serif;
+  --display: "Arial Narrow", "Avenir Next Condensed", sans-serif;
+  --sans: "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif;
   font-family: var(--sans);
   background: var(--black);
   color: var(--paper);

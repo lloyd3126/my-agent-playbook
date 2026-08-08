@@ -6,7 +6,7 @@ PLAYBOOK_DIR=$(cd "$SCRIPT_DIR/.." && pwd -P)
 . "$SCRIPT_DIR/lib.sh"
 
 usage() {
-  printf 'usage: setup-environment.sh <workspace> [--model NAME] [--skip-model] [--install-ffmpeg]\n'
+  printf 'usage: setup-environment.sh <workspace> [--model NAME] [--skip-model]\n'
 }
 
 [ "$#" -ge 1 ] || { usage >&2; exit 1; }
@@ -19,7 +19,6 @@ workspace_input="$1"
 shift
 model_name="turbo"
 skip_model=0
-install_ffmpeg=0
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
@@ -30,10 +29,6 @@ while [ "$#" -gt 0 ]; do
       ;;
     --skip-model)
       skip_model=1
-      shift
-      ;;
-    --install-ffmpeg)
-      install_ffmpeg=1
       shift
       ;;
     -h|--help)
@@ -55,65 +50,21 @@ caption_assert_safe_workspace
 caption_require_command curl
 caption_require_command unzip
 
-mkdir -p "$CAPTION_WORKSPACE" "$CAPTION_BIN" "$CAPTION_MODELS" "$CAPTION_UV_CACHE" "$CAPTION_UV_PYTHON" "$CAPTION_DENO_CACHE"
-
-ffmpeg_installed_by_workflow=0
-ffmpeg_package_manager="none"
-if [ -f "$CAPTION_STATE" ]; then
-  saved_ffmpeg_owner=$(caption_state_value "$CAPTION_STATE" FFMPEG_INSTALLED_BY_WORKFLOW)
-  saved_ffmpeg_manager=$(caption_state_value "$CAPTION_STATE" FFMPEG_PACKAGE_MANAGER)
-  ffmpeg_installed_by_workflow="${saved_ffmpeg_owner:-0}"
-  ffmpeg_package_manager="${saved_ffmpeg_manager:-none}"
-fi
-
-install_ffmpeg_package() {
-  case "$(uname -s)" in
-    Darwin)
-      command -v brew >/dev/null 2>&1 || caption_die "Homebrew is required for automatic FFmpeg installation on macOS; install it manually or install FFmpeg yourself"
-      brew install ffmpeg
-      ffmpeg_package_manager="brew"
-      ;;
-    Linux)
-      if command -v apt-get >/dev/null 2>&1; then
-        sudo apt-get update
-        sudo apt-get install -y ffmpeg
-        ffmpeg_package_manager="apt"
-      elif command -v dnf >/dev/null 2>&1; then
-        sudo dnf install -y ffmpeg
-        ffmpeg_package_manager="dnf"
-      elif command -v pacman >/dev/null 2>&1; then
-        sudo pacman -S --needed --noconfirm ffmpeg
-        ffmpeg_package_manager="pacman"
-      else
-        caption_die "no supported package manager found; install FFmpeg from https://ffmpeg.org/download.html"
-      fi
-      ;;
-    *)
-      caption_die "automatic FFmpeg installation is supported only on macOS and Linux"
-      ;;
-  esac
-  ffmpeg_installed_by_workflow=1
-}
+mkdir -p \
+  "$CAPTION_WORKSPACE" "$CAPTION_BIN" "$CAPTION_MODELS" "$CAPTION_UV_CACHE" \
+  "$CAPTION_UV_PYTHON" "$CAPTION_DENO_CACHE" "$CAPTION_XDG_CACHE" \
+  "$CAPTION_PYTHON_CACHE" "$CAPTION_TORCH_CACHE" "$CAPTION_TIKTOKEN_CACHE" \
+  "$CAPTION_HF_CACHE" "$CAPTION_YTDLP_CACHE" "$CAPTION_TEMP" "$CAPTION_LOCAL_HOME" \
+  "$CAPTION_XDG_CONFIG" "$CAPTION_XDG_DATA" "$CAPTION_XDG_STATE"
 
 write_install_state() {
   {
-    printf 'FFMPEG_INSTALLED_BY_WORKFLOW=%s\n' "$ffmpeg_installed_by_workflow"
-    printf 'FFMPEG_PACKAGE_MANAGER=%s\n' "$ffmpeg_package_manager"
+    printf 'INSTALL_SCOPE=workspace-only\n'
     printf 'PYTHON_SERIES=3.11\n'
     printf 'DEFAULT_MODEL=%s\n' "$model_name"
+    printf 'FFMPEG_PATH=%s\n' "$CAPTION_FFMPEG"
   } > "$CAPTION_STATE"
 }
-
-if ! command -v ffmpeg >/dev/null 2>&1 || ! command -v ffprobe >/dev/null 2>&1; then
-  if [ "$install_ffmpeg" -eq 1 ]; then
-    install_ffmpeg_package
-  else
-    caption_die "FFmpeg is missing. Install it manually, or rerun with --install-ffmpeg after the user approves a system package change"
-  fi
-fi
-
-# Record system-package ownership before later network or model downloads can fail.
-write_install_state
 
 caption_note "Installing workflow-local uv..."
 curl -LsSf https://astral.sh/uv/install.sh | env UV_UNMANAGED_INSTALL="$CAPTION_BIN" sh
@@ -156,6 +107,12 @@ fi
 caption_note "Installing Whisper and yt-dlp..."
 "$CAPTION_UV" pip install --python "$CAPTION_PYTHON" --upgrade -r "$PLAYBOOK_DIR/requirements.txt"
 "$CAPTION_UV" pip freeze --python "$CAPTION_PYTHON" > "$CAPTION_RUNTIME/requirements.lock.txt"
+
+caption_note "Installing the workflow-local FFmpeg binary..."
+ffmpeg_source=$(IMAGEIO_FFMPEG_EXE= "$CAPTION_PYTHON" -c 'import imageio_ffmpeg; print(imageio_ffmpeg.get_ffmpeg_exe())')
+[ -f "$ffmpeg_source" ] || caption_die "imageio-ffmpeg did not provide a binary for this platform"
+install -m 0755 "$ffmpeg_source" "$CAPTION_FFMPEG"
+"$CAPTION_FFMPEG" -version >/dev/null 2>&1 || caption_die "workflow-local FFmpeg failed its version check"
 
 if [ "$skip_model" -eq 0 ]; then
   caption_note "Downloading Whisper model: $model_name"

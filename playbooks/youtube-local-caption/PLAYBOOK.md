@@ -10,7 +10,7 @@ http://127.0.0.1:8000/
 
 首頁會顯示所有影片的下載、轉錄、翻譯與完成狀態、進度、字幕、容量及最近 log。按「觀看」會開啟同頁 iframe modal；關閉後仍停留在首頁，背景任務與狀態輪詢不會中斷。
 
-首頁是唯讀控制台。新增、重試、翻譯、取消、清理與刪除仍由 Agent 或明確的腳本命令執行，避免在瀏覽器誤觸資料變更。
+首頁除了保存播放位置外是唯讀控制台。新增、重試、翻譯、取消、清理與刪除仍由 Agent 或明確的腳本命令執行，避免在瀏覽器誤觸資料變更。
 
 ## 目的與成功條件
 
@@ -48,12 +48,13 @@ http://127.0.0.1:8000/
 
 ```text
 <workspace>/
-├── .agent-tools/youtube-local-caption/     # uv、Python、venv、yt-dlp、Whisper、Deno、模型與快取
+├── .agent-tools/youtube-local-caption/     # uv、Python、venv、FFmpeg、yt-dlp、Whisper、Deno、模型與全部已知快取
 └── jobs/
     └── <video-id>/
         ├── status.json                     # 唯一任務狀態來源，atomic write
         ├── manifest.txt
-        ├── ffprobe.txt
+        ├── media-info.txt
+        ├── ui-state.json                   # 首頁播放進度，atomic write
         ├── source/
         │   ├── video.mp4                   # 首頁只播放這個固定路徑
         │   ├── audio.m4a                   # 需要轉錄時才保留
@@ -95,7 +96,7 @@ http://127.0.0.1:8000/
 
 ## 階段 0：取得 playbook
 
-若 Agent 已能讀 repository，直接使用目前版本。全新環境不一定有 Git：可以在 GitHub 下載 ZIP；已有 Git 才使用 `git clone`。不要為單次任務強制安裝 Git。
+建議從 GitHub Release 下載 `my-agent-playbook-vX.Y.Z-portable.zip` 與 checksum。解壓縮後用 Agent 開啟整個資料夾並從根目錄 `START-HERE.md` 開始；不需要安裝 Git。已有 Git 且要參與維護時才使用 `git clone`。
 
 Agent 先讀根目錄 `AGENTS.md` 與本文件。
 
@@ -117,9 +118,9 @@ Agent 先讀根目錄 `AGENTS.md` 與本文件。
 playbooks/youtube-local-caption/scripts/doctor.sh work/youtube-caption
 ```
 
-`doctor.sh` 唯讀，不安裝或刪除。Agent 要用白話說明 OS／CPU、磁碟、`curl`、`unzip`、FFmpeg、runtime、模型和既有 jobs。
+`doctor.sh` 唯讀，不安裝或刪除。Agent 要用白話說明 OS／CPU、磁碟、`curl`、`unzip`、workflow-local FFmpeg、runtime、模型和既有 jobs。系統 Python、FFmpeg、yt-dlp、Deno 與 uv 只列為「偵測但不使用」。
 
-若缺 `curl`、`unzip`、套件管理器或系統 FFmpeg，先說明將修改系統的內容並取得同意。不要默默使用 `sudo`。
+若缺 `curl` 或 `unzip`，停止並說明；這版不會呼叫套件管理器或 `sudo`。Release 的支援環境預期已有作業系統基礎的 HTTPS 下載與 ZIP 解壓能力。
 
 ## 階段 3：隔離安裝
 
@@ -133,24 +134,14 @@ playbooks/youtube-local-caption/scripts/setup-environment.sh \
 
 - uv 與 uv 管理的 Python 3.11
 - 專用 `.venv`
-- `openai-whisper`、`yt-dlp[default]`
+- `openai-whisper`、`yt-dlp[default]`、`imageio-ffmpeg`
+- 從平台 wheel 複製到 workflow `bin/` 的 FFmpeg
 - Whisper 模型
 - workflow-local Deno
 
 Deno 不是拿來開網頁伺服器；它只提供 yt-dlp 目前 YouTube extractor 所需的 JavaScript runtime。影片庫伺服器使用 Python 標準庫，不增加 PHP、Node 或資料庫依賴。
 
-腳本不修改 shell profile、不取代系統 Python，也不把工具加入全域 `PATH`。低資源環境可用 `--model small`；先不下載模型可用 `--skip-model`。
-
-系統沒有 FFmpeg 時，取得同意後才執行：
-
-```bash
-playbooks/youtube-local-caption/scripts/setup-environment.sh \
-  work/youtube-caption \
-  --install-ffmpeg \
-  --model turbo
-```
-
-腳本只使用既有 Homebrew、APT、DNF 或 Pacman，並記錄是否由本流程安裝，供安全移除。
+腳本不修改 shell profile、不取代系統 Python、不把工具加入全域 `PATH`，也不使用 Homebrew、APT、DNF 或 Pacman。執行時把 `HOME`、`TMPDIR`、`UV_*`、完整 XDG config/data/state/cache、`TORCH_HOME`、`TIKTOKEN_CACHE_DIR`、`HF_HOME`、Python bytecode、Deno 與 yt-dlp cache 全部改到 runtime；yt-dlp 加上 `--ignore-config`，不讀使用者全域設定。低資源環境可用 `--model small`；先不下載模型可用 `--skip-model`。
 
 安裝後再次執行 doctor，必須看到 `status: ready`。
 
@@ -162,7 +153,7 @@ playbooks/youtube-local-caption/scripts/serve-library.sh \
   8000
 ```
 
-開啟 <http://127.0.0.1:8000/>。Server 僅綁定 `127.0.0.1`，並且只暴露 allowlist 路由：首頁資產、job JSON、log 尾端、標準化 MP4、縮圖、VTT 與 player。它不提供任意目錄瀏覽，也不會公開 `.agent-tools` 或模型。
+開啟 <http://127.0.0.1:8000/>。Server 僅綁定 `127.0.0.1`，並且只暴露 allowlist 路由：首頁資產、job JSON、log 尾端、標準化 MP4、縮圖、VTT、player，以及只寫 `ui-state.json` 的播放進度端點。它不提供任意目錄瀏覽，也不會公開 `.agent-tools` 或模型。
 
 影片 endpoint 支援 HTTP Range，拖曳時不需重新傳送整支影片。播放器與首頁同源，因此 iframe 能安全交換 ready、播放時間、暫停與接續播放訊息。
 
@@ -271,9 +262,9 @@ playbooks/youtube-local-caption/scripts/import-caption.sh \
 - [ ] 預設繁中；可切英文／原文／關閉
 - [ ] 播放、暫停、拖曳後字幕同步
 - [ ] 關閉 modal 後 iframe `src` 被清除，影片停止解碼
-- [ ] 重開同支影片可從此瀏覽器保存的進度接續
+- [ ] 重開同支影片可從 job 內 `ui-state.json` 的進度接續
 - [ ] 詳細資料能看到狀態歷程與 log
-- [ ] Plyr CDN 失敗時仍可使用原生 `<video controls>`
+- [ ] 斷網時仍可使用原生 `<video controls>` 與本機 VTT，頁面不發出 CDN 請求
 
 ## 使用四、五次之後的預期流程
 
@@ -371,7 +362,7 @@ playbooks/youtube-local-caption/scripts/uninstall.sh \
   --yes
 ```
 
-只有安裝紀錄能證明 FFmpeg 由本流程新增時，才能加 `--include-system-ffmpeg`。repository clone、瀏覽器紀錄與其他既有工具不會自動移除。
+流程不會新增或移除系統 FFmpeg。若使用 portable release，停止程序後直接刪除整個解壓縮資料夾，即可移除所有 workflow-owned 工具、模型、jobs、播放進度與已知持久快取。瀏覽器歷史、瀏覽器一般 cache 與作業系統暫存依各自政策管理，不宣稱由本流程刪除。
 
 ## 使用者可以怎麼請 Agent
 
@@ -393,7 +384,7 @@ playbooks/youtube-local-caption/scripts/uninstall.sh \
 
 移除：
 
-> 依 uninstall 章節先做 dry run，分開列出 runtime、模型、jobs 與系統 FFmpeg；先不要真的刪除。
+> 依 uninstall 章節先做 dry run，分開列出 runtime、模型與 jobs；確認沒有背景程序，先不要真的刪除。
 
 ## 上游文件
 
@@ -402,3 +393,4 @@ playbooks/youtube-local-caption/scripts/uninstall.sh \
 - [yt-dlp](https://github.com/yt-dlp/yt-dlp)
 - [Deno](https://docs.deno.com/runtime/)
 - [FFmpeg](https://ffmpeg.org/download.html)
+- [imageio-ffmpeg](https://github.com/imageio/imageio-ffmpeg)

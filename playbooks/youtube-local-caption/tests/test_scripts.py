@@ -33,12 +33,9 @@ class WorkflowScriptTests(unittest.TestCase):
         fake_bin.mkdir()
         os.symlink(sys.executable, venv_bin / "python")
         make_executable(workflow_bin / "deno", "#!/bin/sh\nexit 0\n")
+        make_executable(workflow_bin / "ffmpeg", "#!/bin/sh\nprintf 'local workflow ffmpeg\\n' >&2\nexit 0\n")
         make_executable(venv_bin / "whisper", "#!/bin/sh\nexit 1\n")
-        make_executable(
-            fake_bin / "ffprobe",
-            "#!/bin/sh\nprintf 'codec_type=video\\ncodec_name=h264\\ncodec_type=audio\\ncodec_name=aac\\nduration=12.0\\n'\n",
-        )
-        make_executable(fake_bin / "ffmpeg", "#!/bin/sh\nexit 0\n")
+        make_executable(fake_bin / "ffmpeg", "#!/bin/sh\nprintf 'system ffmpeg must not be used\\n' >&2\nexit 99\n")
         make_executable(
             venv_bin / "yt-dlp",
             """#!/bin/sh
@@ -107,6 +104,7 @@ exit 2
         self.assertTrue((job_dir / "source" / "video.mp4").is_file())
         self.assertTrue((job_dir / "captions" / "en.vtt").is_file())
         self.assertFalse((job_dir / "source" / "audio.m4a").exists())
+        self.assertIn("local workflow ffmpeg", (job_dir / "media-info.txt").read_text(encoding="utf-8"))
 
     def test_one_command_entrypoint_reaches_actionable_state(self) -> None:
         result = self.run_script(
@@ -161,6 +159,31 @@ exit 2
         self.assertNotEqual(attempted.returncode, 0)
         self.assertIn("library server is still running", attempted.stdout)
         self.assertTrue((self.workspace / ".agent-tools" / "youtube-local-caption").is_dir())
+
+    def test_runtime_cache_environment_stays_under_workspace(self) -> None:
+        command = f"""
+set -eu
+. {SCRIPTS / 'lib.sh'}
+caption_set_paths {self.workspace}
+printf '%s\n' "$UV_CACHE_DIR" "$UV_PYTHON_INSTALL_DIR" "$DENO_DIR" "$XDG_CACHE_HOME" \
+  "$PYTHONPYCACHEPREFIX" "$TORCH_HOME" "$TIKTOKEN_CACHE_DIR" "$HF_HOME" "$CAPTION_YTDLP_CACHE" \
+  "$HOME" "$XDG_CONFIG_HOME" "$XDG_DATA_HOME" "$XDG_STATE_HOME" "$TMPDIR"
+"""
+        result = subprocess.run(
+            ["bash", "-c", command],
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            check=True,
+        )
+        runtime = (self.workspace / ".agent-tools" / "youtube-local-caption").resolve()
+        for output_path in result.stdout.splitlines():
+            Path(output_path).resolve().relative_to(runtime)
+
+    def test_setup_never_invokes_a_system_package_manager(self) -> None:
+        source = (SCRIPTS / "setup-environment.sh").read_text(encoding="utf-8")
+        for forbidden in ("brew install", "apt-get", "sudo ", "dnf install", "pacman -S"):
+            self.assertNotIn(forbidden, source)
 
 
 if __name__ == "__main__":

@@ -14,11 +14,18 @@ if [ "$#" -eq 1 ] && { [ "$1" = "-h" ] || [ "$1" = "--help" ]; }; then usage; ex
 caption_set_paths "$1"
 caption_assert_safe_workspace
 caption_require_runtime
-caption_require_command ffmpeg
-caption_require_command ffprobe
 
 video_url="$2"
-common_args=(--js-runtimes "deno:$CAPTION_DENO" --no-playlist --newline --no-overwrites)
+mkdir -p "$CAPTION_YTDLP_CACHE"
+common_args=(
+  --ignore-config
+  --js-runtimes "deno:$CAPTION_DENO"
+  --ffmpeg-location "$CAPTION_BIN"
+  --cache-dir "$CAPTION_YTDLP_CACHE"
+  --no-playlist
+  --newline
+  --no-overwrites
+)
 
 caption_note "Resolving video metadata..."
 metadata_json=$("$CAPTION_YTDLP" "${common_args[@]}" --skip-download --dump-single-json "$video_url")
@@ -113,8 +120,8 @@ if [ ! -f "$caption_dir/en.vtt" ] && [ ! -f "$caption_dir/zh-TW.vtt" ]; then
   caption_job_state asset --job-dir "$job_dir" --name audio --path "$source_dir/audio.m4a" >/dev/null
 fi
 
-ffprobe -v error -show_entries format=duration:stream=codec_type,codec_name -of default=noprint_wrappers=1 "$video_file" > "$job_dir/ffprobe.txt"
-caption_job_state asset --job-dir "$job_dir" --name mediaInfo --path "$job_dir/ffprobe.txt" >/dev/null
+"$CAPTION_FFMPEG" -nostdin -hide_banner -i "$video_file" 2> "$job_dir/media-info.txt" || true
+caption_job_state asset --job-dir "$job_dir" --name mediaInfo --path "$job_dir/media-info.txt" >/dev/null
 
 {
   printf 'video-id: %s\n' "$video_id"

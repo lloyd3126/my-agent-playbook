@@ -2,6 +2,17 @@
 
 本文件適用於整個 repository。Agent 執行任務前，先讀本文件與目標 playbook；使用者本次明確指示的優先序最高。
 
+## Portable Release 首次入口
+
+若根目錄有 `START-HERE.md` 與 `VERSION`，將此資料夾視為可攜式 release：
+
+1. 先讀 `START-HERE.md`，使用 `scripts/portable/doctor.sh` 盤點。
+2. YouTube 流程的固定 workspace 是根目錄 `.local/youtube-caption/`；除非使用者明確改變設計，不另選外部 workspace。
+3. 不使用 Homebrew、APT、DNF、Pacman、系統 Python、系統 FFmpeg 或全域 npm/pip 安裝。
+4. 第一次下載 Python 套件、Whisper 模型與影片前，先說明網路與磁碟影響；所有持久下載仍須落在 `.local/`。
+5. 服務只以前景程序綁定 localhost；不建立 daemon 或開機啟動項目。
+6. 使用者要完整移除時，先停止程序；刪除整個解壓縮資料夾即可移除所有 workflow-owned 持久資料。
+
 ## 基本互動
 
 - 預設使用繁體中文，保留必要的產品名、檔名與命令原文。
@@ -71,7 +82,7 @@
 
 ## 安裝與移除契約
 
-- 專案內安裝要使用可辨識的單一根目錄，例如 `<workspace>/.agent-tools/<workflow>`。
+- 專案內安裝要使用可辨識的單一根目錄，例如 release 的 `.local/<workflow>/.agent-tools/<workflow>`。
 - 安裝流程應記錄自己新增了哪些元件；重新執行要具備冪等性或清楚拒絕覆蓋。
 - 移除流程預設只顯示將移除的內容；真正刪除需要明確旗標或再次確認。
 - 只移除由該流程安裝的系統套件。若無法證明所有權，只提供人工檢查命令，不自動移除。

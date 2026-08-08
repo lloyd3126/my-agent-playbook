@@ -2,4 +2,4 @@
 # Exact resolved versions are recorded in the runtime's requirements.lock.txt.
 openai-whisper
 yt-dlp[default]
-
+imageio-ffmpeg==0.6.0

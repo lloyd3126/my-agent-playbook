@@ -2,6 +2,8 @@
 
 這個 repository 是給人與 Agent 共用的個人作業系統：把可重複的工作流程、可直接使用的模板，以及需要長期維護的知識分開保存。它不是單一程式，也不假設使用者電腦已經裝好任何工具。
 
+從 GitHub Release 下載 ZIP 的使用者，請先讀 [START-HERE.md](START-HERE.md)。解壓縮後用 Agent 開啟整個資料夾即可；YouTube 流程會把工具、模型、影片庫、播放進度與已知快取放在資料夾內的 `.local/`，不使用系統套件管理器。
+
 ## 怎麼使用
 
 給 Agent 一個明確的目標，並指定對應 playbook。例如：
@@ -18,6 +20,8 @@ Agent 應先閱讀 [AGENTS.md](AGENTS.md)，再讀指定 playbook。若 playbook
 
 ```text
 my-agent-playbook/
+├── START-HERE.md                    # Release ZIP 的人類與 Agent 首次入口
+├── VERSION                          # Portable release 版本
 ├── README.md                         # 人類入口與流程索引
 ├── AGENTS.md                         # 全 repository 共用的 Agent 規則
 ├── playbooks/                        # 如何完成任務
@@ -34,6 +38,7 @@ my-agent-playbook/
 │   └── youtube-caption-player/       # 可嵌入或獨立播放
 ├── knowledge/                        # 可持續更新的研究與背景資料
 │   └── x/accounts/
+├── scripts/portable/                 # 固定使用 `.local/` 的簡短入口
 └── examples/                         # 不含大型媒體的使用範例
 ```
 
@@ -81,6 +86,6 @@ my-agent-playbook/
 
 - 下載的影片與音訊
 - 自動字幕、翻譯字幕與大型模型
-- `.venv`、套件快取、Deno／uv 執行檔
+- `.local/`、`.venv`、套件快取、Deno／uv／FFmpeg 執行檔
 - cookie、token、密碼、瀏覽器 profile
 - 未取得再散布權利的內容

@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-"""Same-origin, read-only local video-library server with Range support."""
+"""Same-origin local video library with Range support and local UI state."""
 
 from __future__ import annotations
 
 import argparse
 import errno
 import json
+import math
 import mimetypes
 import os
 import re
@@ -31,6 +32,7 @@ TRACK_LABELS = {
     "source": "原文",
 }
 RANGE_PATTERN = re.compile(r"^bytes=(\d*)-(\d*)$")
+MAX_JSON_BODY = 4096
 
 
 def parse_timestamp(value: str | None) -> datetime | None:
@@ -131,6 +133,55 @@ class LibraryApplication:
                 return path
         return None
 
+    def playback_state(self, job_dir: Path) -> dict[str, object]:
+        state_path = job_dir / "ui-state.json"
+        if not state_path.is_file():
+            return {"time": 0.0, "duration": None, "updatedAt": None}
+        try:
+            payload = json.loads(state_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return {"time": 0.0, "duration": None, "updatedAt": None}
+        time_value = payload.get("time")
+        duration = payload.get("duration")
+        if not isinstance(time_value, (int, float)) or not math.isfinite(time_value) or time_value < 0:
+            time_value = 0.0
+        if not isinstance(duration, (int, float)) or not math.isfinite(duration) or duration <= 0:
+            duration = None
+        return {
+            "time": float(time_value),
+            "duration": float(duration) if duration is not None else None,
+            "updatedAt": payload.get("updatedAt"),
+        }
+
+    def save_playback_state(self, video_id: str, payload: object) -> dict[str, object]:
+        if not isinstance(payload, dict):
+            raise ValueError("JSON body must be an object")
+        job_dir = self.job_dir(video_id)
+        if not job_dir.is_dir():
+            raise FileNotFoundError(job_dir)
+        time_value = payload.get("time")
+        duration = payload.get("duration")
+        if not isinstance(time_value, (int, float)) or isinstance(time_value, bool) or not math.isfinite(time_value):
+            raise ValueError("time must be a finite number")
+        if time_value < 0:
+            raise ValueError("time must be non-negative")
+        if duration is not None:
+            if not isinstance(duration, (int, float)) or isinstance(duration, bool) or not math.isfinite(duration) or duration <= 0:
+                raise ValueError("duration must be a positive finite number or null")
+            if time_value > duration + 5:
+                raise ValueError("time is beyond duration")
+        normalized = {
+            "time": round(float(time_value), 3),
+            "duration": round(float(duration), 3) if duration is not None else None,
+            "updatedAt": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        }
+        state_path = job_dir / "ui-state.json"
+        temp_path = job_dir / f".ui-state.json.{os.getpid()}.{threading.get_ident()}.tmp"
+        temp_path.write_text(json.dumps(normalized, ensure_ascii=False, separators=(",", ":")) + "\n", encoding="utf-8")
+        os.replace(temp_path, state_path)
+        self.size_cache.pop(video_id, None)
+        return normalized
+
     def summarize_job(self, job_dir: Path, *, include_history: bool = False) -> dict[str, object]:
         if not job_dir.is_dir():
             raise FileNotFoundError(job_dir)
@@ -196,6 +247,7 @@ class LibraryApplication:
             "thumbnailUrl": f"/thumbnails/{video_id}" if thumbnail else None,
             "watchUrl": f"/watch/{video_id}/?embed=1" if video else None,
             "hasLog": (job_dir / "logs" / "workflow.log").is_file(),
+            "playback": self.playback_state(job_dir),
         }
         if include_history:
             result["history"] = status.get("history") or []
@@ -235,6 +287,7 @@ class LibraryApplication:
             "video": {"src": f"/media/{video_id}/video", "type": "video/mp4"},
             "defaultLanguage": default_language,
             "captions": tracks,
+            "playback": summary["playback"],
         }
 
 
@@ -253,9 +306,8 @@ class LibraryRequestHandler(BaseHTTPRequestHandler):
         self.send_header("Cross-Origin-Resource-Policy", "same-origin")
         self.send_header(
             "Content-Security-Policy",
-            "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.plyr.io; "
-            "style-src 'self' 'unsafe-inline' https://cdn.plyr.io https://fonts.googleapis.com; "
-            "font-src https://fonts.gstatic.com; img-src 'self' data:; media-src 'self'; "
+            "default-src 'self'; script-src 'self' 'unsafe-inline'; "
+            "style-src 'self' 'unsafe-inline'; img-src 'self' data:; media-src 'self'; "
             "connect-src 'self'; frame-src 'self'; object-src 'none'; base-uri 'none'",
         )
         super().end_headers()
@@ -265,6 +317,29 @@ class LibraryRequestHandler(BaseHTTPRequestHandler):
 
     def do_GET(self) -> None:  # noqa: N802
         self.route_request(head_only=False)
+
+    def do_PUT(self) -> None:  # noqa: N802
+        parsed = urlparse(self.path)
+        path = unquote(parsed.path)
+        parts = [part for part in path.split("/") if part]
+        try:
+            if len(parts) != 4 or parts[:2] != ["api", "jobs"] or parts[3] != "playback":
+                self.send_error(HTTPStatus.NOT_FOUND)
+                return
+            content_length = int(self.headers.get("Content-Length", "0"))
+            if content_length <= 0 or content_length > MAX_JSON_BODY:
+                self.send_error(HTTPStatus.BAD_REQUEST, "invalid JSON body size")
+                return
+            payload = json.loads(self.rfile.read(content_length).decode("utf-8"))
+            result = self.application.save_playback_state(parts[2], payload)
+            self.send_json(result, head_only=False)
+        except FileNotFoundError as error:
+            self.send_error(HTTPStatus.NOT_FOUND, str(error))
+        except (UnicodeDecodeError, ValueError, json.JSONDecodeError) as error:
+            self.send_error(HTTPStatus.BAD_REQUEST, str(error))
+        except Exception as error:  # pragma: no cover - defensive HTTP boundary
+            self.log_error("write request failed: %s", error)
+            self.send_error(HTTPStatus.INTERNAL_SERVER_ERROR)
 
     def route_request(self, *, head_only: bool) -> None:
         parsed = urlparse(self.path)

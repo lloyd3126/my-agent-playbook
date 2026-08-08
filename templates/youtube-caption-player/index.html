@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="dark" />
     <title>本機字幕播放室</title>
-    <link rel="stylesheet" href="https://cdn.plyr.io/3.8.4/plyr.css" />
     <style>
       :root {
         color-scheme: dark;
@@ -363,7 +362,6 @@
     </main>
 
     <script src="config.js"></script>
-    <script src="https://cdn.plyr.io/3.8.4/plyr.js"></script>
     <script>
       (() => {
         "use strict";
@@ -547,19 +545,8 @@
           runtimeBadge.textContent = badge;
         }
 
-        let player = null;
-        if (isEmbedded) {
-          engineLabel.textContent = "ENGINE · NATIVE EMBED";
-          setPlaybackStatus("嵌入式播放器已建立。", "READY");
-        } else if (typeof window.Plyr === "function") {
-          player = new window.Plyr(video, { ratio: "16:9", captions: { active: false } });
-          engineLabel.textContent = "ENGINE · PLYR + NATIVE FALLBACK";
-          player.on("ready", () => setPlaybackStatus("播放器與字幕介面已建立。", "READY"));
-          player.on("error", () => setPlaybackStatus("影片載入失敗，請檢查檔名、codec 與 HTTP server。", "ERROR"));
-        } else {
-          engineLabel.textContent = "ENGINE · NATIVE FALLBACK";
-          setPlaybackStatus("Plyr 無法載入，已改用瀏覽器原生播放控制。", "FALLBACK" );
-        }
+        engineLabel.textContent = isEmbedded ? "ENGINE · NATIVE EMBED" : "ENGINE · NATIVE VIDEO";
+        setPlaybackStatus("本機原生播放器已建立。", "READY");
 
         video.addEventListener("loadedmetadata", () => {
           const duration = Number.isFinite(video.duration) ? Math.round(video.duration) : 0;
@@ -576,7 +563,7 @@
           cancelAnimationFrame(animationFrame);
           updateCaption();
           if (!video.ended) setPlaybackStatus("已暫停。", "PAUSED");
-          postToParent("player:paused", { time: video.currentTime });
+          postToParent("player:paused", { time: video.currentTime, duration: video.duration });
         });
         video.addEventListener("seeking", updateCaption);
         video.addEventListener("timeupdate", () => {
@@ -619,7 +606,6 @@
           if (message.type === "player:dispose") {
             video.pause();
             cancelAnimationFrame(animationFrame);
-            if (player && typeof player.destroy === "function") player.destroy();
             postToParent("player:disposed", { time: video.currentTime });
           }
           if (message.type === "player:seek" && Number.isFinite(message.time)) {

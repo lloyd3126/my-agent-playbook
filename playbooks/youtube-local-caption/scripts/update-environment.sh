@@ -28,5 +28,7 @@ caption_note "Updating Python packages..."
 "$CAPTION_UV" python install 3.11
 "$CAPTION_UV" pip install --python "$CAPTION_PYTHON" --upgrade -r "$PLAYBOOK_DIR/requirements.txt"
 "$CAPTION_UV" pip freeze --python "$CAPTION_PYTHON" > "$CAPTION_RUNTIME/requirements.lock.txt"
+ffmpeg_source=$(IMAGEIO_FFMPEG_EXE= "$CAPTION_PYTHON" -c 'import imageio_ffmpeg; print(imageio_ffmpeg.get_ffmpeg_exe())')
+install -m 0755 "$ffmpeg_source" "$CAPTION_FFMPEG"
 
 caption_note "Update complete. Run doctor.sh and test with a known short video."

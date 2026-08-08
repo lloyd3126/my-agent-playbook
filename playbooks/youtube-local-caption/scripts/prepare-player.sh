@@ -6,7 +6,7 @@ REPO_ROOT=$(cd "$SCRIPT_DIR/../../.." && pwd -P)
 . "$SCRIPT_DIR/lib.sh"
 
 usage() {
-  printf 'usage: prepare-player.sh --video FILE --zh FILE --en FILE --output DIRECTORY [--template DIRECTORY] [--force]\n'
+  printf 'usage: prepare-player.sh --video FILE --zh FILE --en FILE --output DIRECTORY [--template DIRECTORY] [--ffmpeg FILE] [--force]\n'
 }
 
 video_file=""
@@ -15,6 +15,7 @@ en_file=""
 output_dir=""
 template_dir="$REPO_ROOT/templates/youtube-caption-player"
 force=0
+ffmpeg_file=""
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
@@ -23,6 +24,7 @@ while [ "$#" -gt 0 ]; do
     --en) [ "$#" -ge 2 ] || caption_die "--en requires a value"; en_file="$2"; shift 2 ;;
     --output) [ "$#" -ge 2 ] || caption_die "--output requires a value"; output_dir="$2"; shift 2 ;;
     --template) [ "$#" -ge 2 ] || caption_die "--template requires a value"; template_dir="$2"; shift 2 ;;
+    --ffmpeg) [ "$#" -ge 2 ] || caption_die "--ffmpeg requires a value"; ffmpeg_file="$2"; shift 2 ;;
     --force) force=1; shift ;;
     -h|--help) usage; exit 0 ;;
     *) caption_die "unknown option: $1" ;;
@@ -45,7 +47,9 @@ caption_validate_vtt "$zh_file"
 caption_validate_vtt "$en_file"
 caption_require_file "$template_dir/index.html"
 caption_require_file "$template_dir/config.js"
-caption_require_command ffprobe
+if [ -n "$ffmpeg_file" ]; then
+  [ -x "$ffmpeg_file" ] || caption_die "FFmpeg is not executable: $ffmpeg_file"
+fi
 
 if [ -d "$output_dir" ] && find "$output_dir" -mindepth 1 -maxdepth 1 -print -quit | grep -q .; then
   [ "$force" -eq 1 ] || caption_die "output directory is not empty; use --force to replace the known player files: $output_dir"
@@ -58,7 +62,11 @@ cp "$video_file" "$output_dir/video.mp4"
 cp "$zh_file" "$output_dir/captions.zh-TW.vtt"
 cp "$en_file" "$output_dir/captions.en.vtt"
 
-ffprobe -v error -show_entries format=duration:stream=codec_type,codec_name -of default=noprint_wrappers=1 "$output_dir/video.mp4" > "$output_dir/media-info.txt"
+if [ -n "$ffmpeg_file" ]; then
+  "$ffmpeg_file" -nostdin -hide_banner -i "$output_dir/video.mp4" 2> "$output_dir/media-info.txt" || true
+else
+  printf 'media copied without codec probe; pass --ffmpeg <workflow-local-binary> to record details\n' > "$output_dir/media-info.txt"
+fi
 
 caption_note "Standalone player export prepared: $output_dir"
 caption_note "Start it with serve-player.sh; do not open index.html through file://"

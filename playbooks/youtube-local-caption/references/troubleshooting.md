@@ -8,15 +8,11 @@ playbooks/youtube-local-caption/scripts/doctor.sh <workspace>
 
 不要在不知道前一步是否成功時重跑整套流程。保存錯誤訊息、命令、影片 ID 與完成到哪一階段。
 
-## `ffmpeg` 或 `ffprobe` 找不到
+## workflow-local FFmpeg 找不到
 
-Whisper 需要真正的 FFmpeg 命令列工具，不是 `pip install ffmpeg`。
+這版透過 `imageio-ffmpeg` 的平台 wheel 取得真正的 FFmpeg binary，再複製到 `<workspace>/.agent-tools/youtube-local-caption/bin/ffmpeg`。不需要 `ffprobe`、Homebrew 或 `sudo`。
 
-- macOS 且已有 Homebrew：`brew install ffmpeg`
-- Ubuntu／Debian：`sudo apt-get update` 後執行 `sudo apt-get install ffmpeg`
-- 其他平台參考 [FFmpeg 官方下載頁](https://ffmpeg.org/download.html)
-
-需要系統層安裝時，Agent 先說明影響並取得使用者同意；不要默默使用 `sudo`。
+若 doctor 顯示未安裝，重新執行 `setup-environment.sh`。若套件沒有目前 OS／CPU 的 wheel，停止並回報不支援的平台；不要私自改用系統套件管理器。媒體資訊記錄在 job 的 `media-info.txt`。
 
 ## yt-dlp 顯示 JavaScript runtime 或 EJS 警告
 
@@ -62,19 +58,19 @@ Whisper 需要真正的 FFmpeg 命令列工具，不是 `pip install ffmpeg`。
 playbooks/youtube-local-caption/scripts/serve-library.sh <workspace> 8000
 ```
 
-確認瀏覽器 network 中 `/media/VIDEO_ID/video` 回傳 `200` 或 `206`，以及 `ffprobe` 顯示 MP4 同時有視訊與音訊 stream。影片庫只認固定路徑 `<workspace>/jobs/VIDEO_ID/source/video.mp4`。
+確認瀏覽器 network 中 `/media/VIDEO_ID/video` 回傳 `200` 或 `206`，並查看 job 的 `media-info.txt` 是否列出視訊與音訊 stream。影片庫只認固定路徑 `<workspace>/jobs/VIDEO_ID/source/video.mp4`。
 
 ## `file://` 可以播放影片但字幕載入失敗
 
 瀏覽器通常會限制本機頁面 `fetch` 其他檔案。日常使用 `serve-library.sh`；獨立 export 才使用 `serve-player.sh`。不要直接雙擊 HTML。
 
-## Plyr 載入失敗或離線
+## 離線時播放器無法顯示
 
-模板會保留瀏覽器原生 `<video controls>` 作為 fallback，因此 CDN 失敗仍應可播放。若影片也不能播，檢查：
+模板沒有外部 CDN，使用瀏覽器原生 `<video controls>`。若影片不能播，檢查：
 
 - `video.mp4` 是否存在
 - 瀏覽器是否支援影片 codec
-- `ffprobe` 是否顯示視訊與音訊 stream
+- `media-info.txt` 是否顯示視訊與音訊 stream
 - HTTP server 的 terminal 是否回傳 404
 
 ## Whisper 安裝失敗
@@ -129,8 +125,8 @@ serve-library.sh <workspace> 8010
 
 - 等待 player 的 metadata 載入；大型 MP4 第一個 Range request 可能稍久。
 - 開啟詳細資料確認 job 可觀看且 `video.mp4` 存在。
-- Plyr CDN 被網路阻擋時應出現瀏覽器原生 controls，不會阻止本機影片播放。
-- `video.mp4` codec 不相容時重新檢查 `ffprobe.txt`，必要時用 FFmpeg 轉為 H.264 + AAC；先保留原檔，不直接覆蓋唯一副本。
+- 確認瀏覽器原生 controls 已顯示；頁面不需要任何 CDN。
+- `video.mp4` codec 不相容時重新檢查 `media-info.txt`，必要時用 workflow-local FFmpeg 轉為 H.264 + AAC；先保留原檔，不直接覆蓋唯一副本。
 
 ## 翻譯檔匯入失敗
 

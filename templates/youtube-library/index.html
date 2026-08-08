@@ -34,8 +34,8 @@
           <p class="hero-copy">下載、轉錄、翻譯與觀看狀態集中在同一個首頁。觀看會在頁面內開啟，不打斷正在進行的工作。</p>
         </div>
         <div class="system-note">
-          <span>READ-ONLY CONSOLE</span>
-          <p>新增、重試、取消與刪除由 Agent 或腳本執行；首頁只負責安全地觀察與播放。</p>
+          <span>LOCAL SAFE CONSOLE</span>
+          <p>首頁只會把播放位置寫回 job；新增、重試、取消與刪除仍由 Agent 或腳本執行。</p>
         </div>
       </section>
 
@@ -140,7 +140,7 @@
         <iframe id="player-frame" title="本機影片播放器" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe>
       </div>
       <div class="dialog-foot">
-        <span id="resume-note">播放進度只保存在這個瀏覽器</span>
+        <span id="resume-note">播放進度保存在影片 job 資料夾</span>
         <div class="dialog-controls">
           <label><span>字幕</span><select id="modal-caption-language" aria-label="播放器字幕"></select></label>
           <button id="show-detail-from-player" type="button">查看處理紀錄</button>

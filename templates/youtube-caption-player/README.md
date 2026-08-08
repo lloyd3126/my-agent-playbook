@@ -1,6 +1,6 @@
 # YouTube 本機字幕播放器模板
 
-這是一個不需要建置工具的靜態播放器。它播放本機 MP4，以 JavaScript 讀取外部 VTT，並依影片時間切換字幕。Plyr 提供主要控制介面；CDN 無法使用時會退回瀏覽器原生 `<video controls>`。
+這是一個不需要建置工具或外部 CDN 的靜態播放器。它使用瀏覽器原生 `<video controls>` 播放本機 MP4，以 JavaScript 讀取外部 VTT，並依影片時間切換字幕。
 
 模板有兩種用途：影片庫透過 `/watch/<video-id>/?embed=1` 動態注入設定並放在 iframe modal；`prepare-player.sh` 則可選擇性匯出一支獨立播放器。嵌入模式會用同源 `postMessage` 回報 ready、播放時間與狀態，並接受 pause、seek 與字幕切換命令。
 
@@ -77,6 +77,6 @@ python3 -m http.server 8000 --bind 127.0.0.1 --directory <player-directory>
 2. 只要停止使用，不需要刪除任何檔案。
 3. 要移除播放器時，先確認資料夾內是否有唯一一份影片或字幕備份，再刪除精確的 player 目錄。
 4. 要同時移除 Whisper、yt-dlp、uv、Deno、模型與快取，使用 playbook 的 `uninstall.sh` 先做 dry run。
-5. Plyr 由 CDN 載入，沒有在電腦安裝全域套件；不需要另外 uninstall。
+5. 播放器只包含資料夾內的 HTML、JavaScript、MP4 與 VTT，沒有前端套件需要 uninstall。
 
 使用者影片、字幕和翻譯是產物，預設不會跟著工具移除。

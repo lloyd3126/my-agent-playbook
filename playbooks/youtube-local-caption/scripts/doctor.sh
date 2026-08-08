@@ -22,9 +22,9 @@ printf 'platform: %s\n' "$(uname -s 2>/dev/null || printf unknown)"
 printf 'architecture: %s\n' "$(uname -m 2>/dev/null || printf unknown)"
 
 disk_target="$CAPTION_WORKSPACE"
-if [ ! -e "$disk_target" ]; then
+while [ ! -e "$disk_target" ] && [ "$disk_target" != "/" ]; do
   disk_target=$(dirname "$disk_target")
-fi
+done
 if [ -e "$disk_target" ]; then
   available_kb=$(df -Pk "$disk_target" 2>/dev/null | awk 'NR == 2 { print $4 }')
   if [ -n "$available_kb" ]; then
@@ -33,13 +33,21 @@ if [ -e "$disk_target" ]; then
 fi
 
 missing=0
-for command_name in curl unzip ffmpeg ffprobe; do
+for command_name in curl unzip; do
   if command -v "$command_name" >/dev/null 2>&1; then
     command_path=$(command -v "$command_name")
     printf 'command-%s: %s\n' "$command_name" "$command_path"
   else
     printf 'command-%s: missing\n' "$command_name"
     missing=1
+  fi
+done
+
+for ignored_command in ffmpeg ffprobe python3 yt-dlp deno uv; do
+  if command -v "$ignored_command" >/dev/null 2>&1; then
+    printf 'system-%s: %s (detected, not used by workflow)\n' "$ignored_command" "$(command -v "$ignored_command")"
+  else
+    printf 'system-%s: absent (not required)\n' "$ignored_command"
   fi
 done
 
@@ -54,6 +62,13 @@ if [ -x "$CAPTION_DENO" ]; then
   printf 'deno: %s\n' "$($CAPTION_DENO --version 2>/dev/null | sed -n '1p')"
 else
   printf 'deno: not-installed-by-workflow\n'
+  missing=1
+fi
+
+if [ -x "$CAPTION_FFMPEG" ]; then
+  printf 'ffmpeg: %s\n' "$($CAPTION_FFMPEG -version 2>/dev/null | sed -n '1p')"
+else
+  printf 'ffmpeg: not-installed-by-workflow\n'
   missing=1
 fi
 
@@ -85,6 +100,10 @@ if [ -d "$CAPTION_MODELS" ]; then
 else
   printf 'whisper-model-files: 0\n'
 fi
+
+printf 'install-scope: %s\n' "$CAPTION_RUNTIME"
+printf 'generated-scope: %s\n' "$CAPTION_JOBS"
+printf 'external-package-manager-changes: none\n'
 
 if [ -f "$REPO_ROOT/templates/youtube-library/index.html" ] && [ -f "$CAPTION_LIBRARY_SERVER" ]; then
   printf 'library-template: available\n'
