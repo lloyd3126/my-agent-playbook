@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>本機影片字幕播放器</title>
+    <link rel="stylesheet" href="https://cdn.plyr.io/3.8.4/plyr.css" />
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: #111827;
+        color: #f9fafb;
+      }
+
+      body {
+        max-width: 960px;
+        margin: 0 auto;
+        padding: 32px 20px;
+      }
+
+      h1 {
+        font-size: 1.4rem;
+        margin: 0 0 20px;
+      }
+
+      .player-wrap {
+        position: relative;
+        --plyr-color-main: #f97316;
+      }
+
+      .player-wrap video {
+        width: 100%;
+      }
+
+      .custom-caption {
+        position: absolute;
+        right: 5%;
+        bottom: 4.5rem;
+        left: 5%;
+        z-index: 2;
+        padding: 0.35rem 0.7rem;
+        border-radius: 0.35rem;
+        background: rgb(0 0 0 / 75%);
+        color: #fff;
+        font-size: clamp(1rem, 2.1vw, 1.45rem);
+        line-height: 1.45;
+        text-align: center;
+        text-shadow: 0 1px 2px rgb(0 0 0 / 90%);
+        pointer-events: none;
+      }
+
+      .custom-caption[hidden] {
+        display: none;
+      }
+
+      .status,
+      .caption-control {
+        color: #cbd5e1;
+        font-size: 0.9rem;
+        line-height: 1.6;
+        margin-top: 16px;
+      }
+
+      .caption-control {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+      }
+
+      .caption-control select {
+        border: 1px solid #475569;
+        border-radius: 0.4rem;
+        padding: 0.35rem 0.5rem;
+        background: #1e293b;
+        color: #f8fafc;
+      }
+    </style>
+  </head>
+
+  <body>
+    <h1>本機影片字幕播放器</h1>
+
+    <div class="player-wrap">
+      <video id="player" playsinline controls>
+        <source src="video.mp4" type="video/mp4" />
+      </video>
+      <div id="custom-caption" class="custom-caption" aria-live="polite" hidden></div>
+    </div>
+
+    <p id="status" class="status">正在載入本機影片與字幕……</p>
+    <div class="caption-control">
+      <label for="caption-language">字幕</label>
+      <select id="caption-language">
+        <option value="zh-TW" selected>繁體中文</option>
+        <option value="en">English</option>
+      </select>
+      <span id="caption-status">正在載入……</span>
+    </div>
+
+    <script src="https://cdn.plyr.io/3.8.4/plyr.js"></script>
+    <script>
+      const video = document.querySelector("#player");
+      const status = document.querySelector("#status");
+      const captionBox = document.querySelector("#custom-caption");
+      const captionLanguage = document.querySelector("#caption-language");
+      const captionStatus = document.querySelector("#caption-status");
+      const captionSources = {
+        "zh-TW": "captions.zh-TW.vtt",
+        en: "captions.en.vtt",
+      };
+
+      let activeCues = [];
+
+      function parseTimecode(value) {
+        const parts = value.trim().replace(",", ".").split(":");
+        if (parts.length === 2) parts.unshift("0");
+        return Number(parts[0]) * 3600 + Number(parts[1]) * 60 + Number(parts[2]);
+      }
+
+      function cleanCueText(value) {
+        const container = document.createElement("div");
+        container.innerHTML = value
+          .replace(/<\/?c(?:\.[^>]*)?>/g, "")
+          .replace(/<\d{2}:\d{2}(?::\d{2})?\.\d{3}>/g, "");
+        return (container.textContent || "").replace(/\s+/g, " ").trim();
+      }
+
+      // Supports YouTube VTT files that put blank lines between timing and text.
+      function parseVtt(source) {
+        const lines = source.replace(/\r/g, "").split("\n");
+        const cues = [];
+
+        for (let index = 0; index < lines.length; index += 1) {
+          const timing = lines[index].match(/^(\S+)\s+-->\s+(\S+)/);
+          if (!timing) continue;
+
+          const textLines = [];
+          let nextIndex = index + 1;
+          while (
+            nextIndex < lines.length &&
+            !/^\S+\s+-->\s+\S+/.test(lines[nextIndex])
+          ) {
+            if (lines[nextIndex].trim()) textLines.push(lines[nextIndex]);
+            nextIndex += 1;
+          }
+
+          const text = cleanCueText(textLines.join("\n"));
+          const start = parseTimecode(timing[1]);
+          const end = parseTimecode(timing[2]);
+          if (text && end > start) cues.push({ start, end, text });
+          index = nextIndex - 1;
+        }
+
+        return cues;
+      }
+
+      function updateCaption() {
+        const currentTime = video.currentTime || 0;
+        const currentCue = activeCues.find(
+          (cue) => currentTime >= cue.start && currentTime < cue.end
+        );
+        const text = currentCue?.text || "";
+        captionBox.textContent = text;
+        captionBox.hidden = !text;
+      }
+
+      async function loadCaptions(language) {
+        captionBox.hidden = true;
+        captionStatus.textContent = "正在載入字幕……";
+        const response = await fetch(captionSources[language]);
+        if (!response.ok) throw new Error(`字幕載入失敗：${response.status}`);
+        activeCues = parseVtt(await response.text());
+        captionStatus.textContent = `${activeCues.length} 段字幕已載入`;
+        updateCaption();
+      }
+
+      const player = new Plyr(video, { ratio: "16:9", captions: { active: false } });
+
+      player.on("ready", () => {
+        status.textContent = "播放器已建立；按播放後字幕會同步顯示。";
+      });
+      player.on("playing", () => {
+        status.textContent = "播放中。";
+      });
+      player.on("error", () => {
+        status.textContent = "影片載入失敗，請確認 video.mp4 存在且使用 HTTP 開啟。";
+      });
+      player.on("timeupdate", updateCaption);
+      player.on("seeking", updateCaption);
+      window.setInterval(updateCaption, 100);
+
+      captionLanguage.addEventListener("change", async () => {
+        try {
+          await loadCaptions(captionLanguage.value);
+        } catch (error) {
+          captionStatus.textContent = error.message;
+          captionBox.hidden = true;
+        }
+      });
+
+      loadCaptions("zh-TW").catch((error) => {
+        captionStatus.textContent = error.message;
+      });
+    </script>
+  </body>
+</html>

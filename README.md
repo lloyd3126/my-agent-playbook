@@ -162,3 +162,11 @@
 - 涉及投資判斷時，區分產業分析與個人投資建議。
 - 使用者只要求查看時，不改變收藏、追蹤或其他帳戶狀態。
 - 需要登入時，沿用現有瀏覽器工作階段，不要求使用者提供密碼。
+
+## YouTube
+
+### 本機影片與字幕
+
+- 流程：[YouTube 本機字幕流程 v1](playbooks/youtube-local-caption-workflow.md)
+- 播放器模板：[templates/youtube-caption-player/index.html](templates/youtube-caption-player/index.html)
+- 模板固定使用 `video.mp4`、`captions.zh-TW.vtt` 與 `captions.en.vtt`，下載後放在同一資料夾即可使用。
