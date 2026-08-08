@@ -1,0 +1,4 @@
+interface:
+  display_name: "財報狗公司分析"
+  short_description: "Research companies with traceable StatementDog sources"
+  default_prompt: "Use $statementdog-company-analysis to research this company with traceable sources."

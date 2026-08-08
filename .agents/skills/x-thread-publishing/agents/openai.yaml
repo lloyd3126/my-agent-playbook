@@ -1,0 +1,4 @@
+interface:
+  display_name: "X 串文發布"
+  short_description: "Draft and publish X threads with explicit confirmation"
+  default_prompt: "Use $x-thread-publishing to prepare this X thread and ask before publishing."

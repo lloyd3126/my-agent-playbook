@@ -1,0 +1,21 @@
+{
+  "name": "my-agent-playbook",
+  "interface": {
+    "displayName": "My Agent Playbook",
+    "description": "Portable Codex workflows maintained by lloyd3126."
+  },
+  "plugins": [
+    {
+      "name": "my-agent-playbook",
+      "source": {
+        "source": "local",
+        "path": "./plugins/my-agent-playbook"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_USE"
+      },
+      "category": "productivity"
+    }
+  ]
+}

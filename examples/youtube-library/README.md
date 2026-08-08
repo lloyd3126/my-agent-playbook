@@ -21,9 +21,9 @@ work/youtube-caption/
 啟動：
 
 ```bash
-playbooks/youtube-local-caption/scripts/serve-library.sh work/youtube-caption 8000
+plugins/my-agent-playbook/skills/youtube-caption-library/scripts/serve-library.sh work/youtube-caption 8000
 ```
 
 首頁會把 `VIDEO_A` 顯示為完成且可觀看，把 `VIDEO_B` 顯示為待轉錄但仍可先播放。加入第三、第四支影片時沿用同一個 workspace 和首頁。
 
-完整流程與狀態恢復規則請讀 [YouTube 本機字幕 playbook](../../playbooks/youtube-local-caption/PLAYBOOK.md)。
+完整流程與狀態恢復規則請讀 [YouTube 本機字幕 skill](../../plugins/my-agent-playbook/skills/youtube-caption-library/SKILL.md)。

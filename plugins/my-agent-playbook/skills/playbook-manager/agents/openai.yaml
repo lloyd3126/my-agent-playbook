@@ -1,0 +1,4 @@
+interface:
+  display_name: "Playbook 管理器"
+  short_description: "檢查、更新與完整移除這套 Codex plugin"
+  default_prompt: "Use $playbook-manager to inspect and safely update or remove my-agent-playbook."

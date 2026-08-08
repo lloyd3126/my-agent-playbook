@@ -14,7 +14,7 @@ player/
 └── media-info.txt
 ```
 
-建立方式請依照 [YouTube 本機字幕流程](../../playbooks/youtube-local-caption/PLAYBOOK.md)，模板說明位於 [templates/youtube-caption-player](../../templates/youtube-caption-player/README.md)。
+建立方式請依照 [YouTube 本機字幕 skill](../../plugins/my-agent-playbook/skills/youtube-caption-library/SKILL.md)，模板說明位於 [player-template.md](../../plugins/my-agent-playbook/skills/youtube-caption-library/references/player-template.md)。
 
 範例不內含媒體的原因：
 

@@ -1,91 +1,136 @@
-# 我的 Agent 作業手冊
+# My Agent Playbook
 
-這個 repository 是給人與 Agent 共用的個人作業系統：把可重複的工作流程、可直接使用的模板，以及需要長期維護的知識分開保存。它不是單一程式，也不假設使用者電腦已經裝好任何工具。
+這是一套以 Codex 為主要使用者的 skills 與 plugin，同時保留「下載 Release ZIP、解壓縮、用 Codex 開啟資料夾就能開始」的可攜模式。
 
-從 GitHub Release 下載 ZIP 的使用者，請先讀 [START-HERE.md](START-HERE.md)。解壓縮後用 Agent 開啟整個資料夾即可；YouTube 流程會把工具、模型、影片庫、播放進度與已知快取放在資料夾內的 `.local/`，不使用系統套件管理器。
+目前包含固定首頁的本機字幕影片庫、本機 Whisper／OpenAI API 轉錄、安全更新與移除、X 研究／發布流程，以及財報狗公司研究。
 
-## 怎麼使用
+## 兩種使用模式
 
-給 Agent 一個明確的目標，並指定對應 playbook。例如：
+| 模式 | 適合誰 | Codex 設定影響 | 工具與影片 |
+| --- | --- | --- | --- |
+| Release ZIP / Git 資料夾 | 希望所有內容跟著資料夾走 | 無；repository-scoped skills 由 Codex 在資料夾內發現 | 全部放在 ".local/" |
+| Codex plugin | 希望每個 Codex task 都能使用 | marketplace、plugin cache 與設定由 Codex 管理 | 影片庫仍可指定在專案內 |
 
-> 請依照 `playbooks/youtube-local-caption/PLAYBOOK.md` 建立固定的本機影片庫首頁，從環境檢查開始，把這支影片加入佇列並產生繁體中文與英文字幕；完成後告訴我安裝了什麼、下次怎麼用，以及如何移除。
+可攜模式最符合「刪除整個資料夾即移除 workflow-owned 持久資料」的需求。Plugin 模式需要先用 "$playbook-manager" 移除 Codex 設定與 cache。
 
-> 請依照 `playbooks/x-account-research.md` 更新 Serenity 最近 7 天的公開內容，只讀取與整理，不要與帳號互動。
+## 最快開始：Release ZIP
 
-> 請依照 `playbooks/statementdog-company-analysis.md` 研究指定公司，區分來源事實、網站觀點與 Agent 推論。
+1. 從 GitHub Releases 下載 "my-agent-playbook-vVERSION-portable.zip" 與同名 ".sha256"。
+2. 驗證 checksum 並解壓縮。
+3. 用 Codex 開啟整個資料夾。
+4. 直接說：
 
-Agent 應先閱讀 [AGENTS.md](AGENTS.md)，再讀指定 playbook。若 playbook 與使用者本次指示衝突，以使用者本次指示為準。
+> 請使用 $youtube-caption-library，先檢查這個可攜式工作區。所有工具與資料都留在此資料夾；說明本機與 API 轉錄的差異後，幫我啟動影片庫。
 
-## Repository 地圖
+Codex 會從 ".agents/skills/" 發現 repository-scoped 入口，再讀取 "plugins/my-agent-playbook/skills/" 的完整 skill。
 
-```text
-my-agent-playbook/
-├── START-HERE.md                    # Release ZIP 的人類與 Agent 首次入口
-├── VERSION                          # Portable release 版本
-├── README.md                         # 人類入口與流程索引
-├── AGENTS.md                         # 全 repository 共用的 Agent 規則
-├── playbooks/                        # 如何完成任務
-│   ├── x-thread-publishing.md
-│   ├── x-account-research.md
-│   ├── statementdog-company-analysis.md
-│   └── youtube-local-caption/
-│       ├── PLAYBOOK.md
-│       ├── requirements.txt
-│       ├── scripts/
-│       └── references/
-├── templates/                        # 可以複製使用的成品骨架
-│   ├── youtube-library/              # 固定首頁、狀態表與 iframe modal
-│   └── youtube-caption-player/       # 可嵌入或獨立播放
-├── knowledge/                        # 可持續更新的研究與背景資料
-│   └── x/accounts/
-├── scripts/portable/                 # 固定使用 `.local/` 的簡短入口
-└── examples/                         # 不含大型媒體的使用範例
-```
+## 安裝成 Codex plugin
 
-## Playbooks
+若要在所有 Codex 工作中使用：
 
-| 任務 | Playbook | 是否會改變外部狀態 |
+~~~bash
+codex plugin marketplace add https://github.com/lloyd3126/my-agent-playbook.git
+codex plugin add my-agent-playbook@my-agent-playbook
+~~~
+
+完成後重新開啟 Codex task。Plugin manifest 位於 "plugins/my-agent-playbook/.codex-plugin/plugin.json"，marketplace 位於 ".agents/plugins/marketplace.json"。
+
+## Skills
+
+| Skill | 用途 | 範例請求 |
 | --- | --- | --- |
-| 發布 X 串文 | [X 串文發布](playbooks/x-thread-publishing.md) | 會；每次發布前需要明確確認 |
-| 整理 X 帳號 | [X 帳號研究](playbooks/x-account-research.md) | 不會；預設只讀 |
-| 財報狗研究 | [財報狗公司與產業研究](playbooks/statementdog-company-analysis.md) | 不會；預設只讀 |
-| YouTube 本機影片庫與字幕 | [YouTube 本機字幕流程](playbooks/youtube-local-caption/PLAYBOOK.md) | 會建立本機檔案；下載前確認權利與範圍 |
+| "$youtube-caption-library" | 下載、字幕、轉錄、翻譯、本機影片庫 | 「把這支有權處理的 YouTube 影片加入本機影片庫」 |
+| "$transcribe-media" | 本機或 OpenAI API 時間軸轉錄 | 「用 API 轉錄這支檔案並輸出 VTT」 |
+| "$playbook-manager" | 檢查版本、更新、診斷、移除 | 「檢查更新，先不要套用」 |
+| "$x-account-research" | X 公開內容只讀研究 | 「整理這個帳號最近七天的公開貼文」 |
+| "$x-thread-publishing" | X 串文草稿與經確認後發布 | 「把這份內容整理成串文，先不要發布」 |
+| "$statementdog-company-analysis" | 公司、財務與產業研究 | 「以財報狗與原始來源研究這家公司」 |
 
-## Templates
+## 本機影片庫
 
-- [YouTube 本機影片庫首頁](templates/youtube-library/README.md)：固定首頁、任務狀態表、log、搜尋／篩選與 iframe modal。
-- [YouTube 本機字幕播放器](templates/youtube-caption-player/README.md)：播放本機 MP4，以 VTT 顯示並切換字幕，可獨立匯出或嵌入影片庫。
+影片庫固定入口是 "http://127.0.0.1:8000/"。首頁顯示下載中、轉錄中、待翻譯、失敗與完成等狀態；觀看時在同頁 iframe modal 開啟，播放進度寫回 job 資料夾。
 
-## Knowledge
+Portable 命令：
 
-- [Serenity 帳號研究紀錄](knowledge/x/accounts/serenity.md)
+~~~bash
+scripts/portable/doctor.sh
+scripts/portable/setup.sh --provider local --model turbo
+scripts/portable/serve.sh 8000
+scripts/portable/add-video.sh 'YOUTUBE_URL'
+~~~
 
-`knowledge/` 保存可追溯的研究紀錄，不保存登入憑證、瀏覽器 cookie、API key、下載的影片、Whisper 模型或虛擬環境。
+API 模式不下載 Whisper 模型，但音訊會傳到 OpenAI 且可能產生費用：
 
-## 共用生命週期
+~~~bash
+scripts/portable/setup.sh --provider openai
+export OPENAI_API_KEY='只放在目前 terminal'
+scripts/portable/add-video.sh 'YOUTUBE_URL' --provider openai --allow-api-upload
+~~~
 
-每個會操作網站、安裝工具或建立可持續資料的流程，都必須涵蓋以下階段：
+程式不會儲存或輸出 API key。API 轉錄以 "whisper-1" 取得 segment timestamps，並把音訊切成符合 25 MB 上限的片段後還原成單一時間軸。
 
-1. **確認環境**：檢查作業系統、Agent 可用能力、瀏覽器／登入狀態、既有工具、磁碟與權限。
-2. **說明影響**：安裝或登入前，列出會新增的工具、檔案、網路存取與可能的系統變更。
-3. **最小安裝**：優先使用專案內或工作資料夾內的隔離環境，不覆蓋系統 Python，也不默默修改 shell 設定。
-4. **首次驗證**：用最小案例確認流程可執行，再處理完整資料。
-5. **持續使用**：提供下次可直接重複的命令、檔名規則、更新方式與檢查點。
-6. **教學交接**：完成時用白話說明做了什麼、產物在哪裡、怎麼重新啟動。
-7. **完整移除**：先預覽要移除的項目，只移除本流程建立的工具與資料；既有工具和使用者內容預設保留。
+## 更新
 
-## 安全預設
+最簡單的互動方式：
 
-- 不要求使用者提供密碼、cookie、API key 或雙重驗證碼；登入由使用者在瀏覽器中自行完成。
-- 不靜默安裝系統層套件。需要 `sudo`、套件管理器或修改帳戶狀態時，先說明並取得同意。
-- 不因為能控制網站就自動發布、按讚、追蹤、收藏、回覆、購買或刪除。
-- 外部資訊可能過時時，先重新查證；金融、政策與產業內容要標明來源日期與不確定性。
-- 移除預設採 dry run 或先列清單；使用者產生的影片、字幕與研究紀錄不會跟著工具自動刪除。
+> 請使用 $playbook-manager 檢查 my-agent-playbook 是否有更新；先報告差異，不要套用。
 
-## 不放進 repository 的內容
+> 請使用 $playbook-manager 安全更新；保留 ".local/"、影片、字幕與播放進度，完成後驗證版本。
 
-- 下載的影片與音訊
-- 自動字幕、翻譯字幕與大型模型
-- `.local/`、`.venv`、套件快取、Deno／uv／FFmpeg 執行檔
-- cookie、token、密碼、瀏覽器 profile
-- 未取得再散布權利的內容
+命令：
+
+~~~bash
+python3 plugins/my-agent-playbook/skills/playbook-manager/scripts/manage.py status
+python3 plugins/my-agent-playbook/skills/playbook-manager/scripts/manage.py update
+python3 plugins/my-agent-playbook/skills/playbook-manager/scripts/manage.py update --apply
+~~~
+
+Git 模式只接受乾淨 worktree 的 fast-forward；plugin 模式使用 Codex marketplace upgrade；portable 模式驗證 release checksum 與內部 manifest，先備份 managed files，永遠保留 ".local/"。
+
+## 移除
+
+Portable 預覽：
+
+~~~bash
+scripts/portable/uninstall.sh
+~~~
+
+移除工具、模型與 cache，保留影片庫：
+
+~~~bash
+scripts/portable/uninstall.sh --yes
+~~~
+
+連影片、字幕、log 與播放進度一起移除：
+
+~~~bash
+scripts/portable/uninstall.sh --include-generated --yes
+~~~
+
+停止所有前景程序後，再把解壓縮資料夾移到垃圾桶，即可完整移除 portable 模式。系統瀏覽器的一般歷史與 cache 依瀏覽器政策管理，不屬於本專案。
+
+Plugin 模式請用：
+
+~~~bash
+codex plugin remove my-agent-playbook@my-agent-playbook
+codex plugin marketplace remove my-agent-playbook
+~~~
+
+## Repository 結構
+
+~~~text
+my-agent-playbook/
+├── .agents/
+│   ├── plugins/marketplace.json
+│   └── skills/                       # 開啟資料夾即可發現的薄入口
+├── plugins/my-agent-playbook/
+│   ├── .codex-plugin/plugin.json
+│   └── skills/                       # 唯一完整 skill 實作
+├── knowledge/                        # 可追溯、可持續更新的研究
+├── scripts/portable/                 # 固定使用 repository 內 ".local/"
+├── tests/                            # 結構、腳本、server、provider、release 測試
+├── START-HERE.md
+└── VERSION
+~~~
+
+大型媒體、模型、venv、cache、cookie、token、密碼與 API key 不進 Git。下載與處理媒體前，使用者必須確認自己有相應權利。

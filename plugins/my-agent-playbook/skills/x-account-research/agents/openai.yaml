@@ -1,0 +1,4 @@
+interface:
+  display_name: "X 帳號研究"
+  short_description: "Research public X accounts without interacting with them"
+  default_prompt: "Use $x-account-research to research this X account without interacting with it."

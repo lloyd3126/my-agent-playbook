@@ -1,98 +1,47 @@
-# Agent 共用規則
+# Agent rules
 
-本文件適用於整個 repository。Agent 執行任務前，先讀本文件與目標 playbook；使用者本次明確指示的優先序最高。
+本 repository 以 Codex skills 為操作入口。先選擇 ".agents/skills/" 中符合任務的 skill；該入口會要求讀取 "plugins/my-agent-playbook/skills/" 的完整實作。使用者本次明確指示優先。
 
-## Portable Release 首次入口
+## Portable contract
 
-若根目錄有 `START-HERE.md` 與 `VERSION`，將此資料夾視為可攜式 release：
+- 根目錄含 "START-HERE.md" 與 "VERSION" 時，預設 workspace 是 ".local/youtube-caption/"。
+- 不在 repository 之外安裝影片庫工具，不使用 sudo、系統套件管理器、全域 pip/npm，也不修改 shell profile。
+- uv、Python、venv、Deno、FFmpeg、yt-dlp、Whisper、OpenAI SDK、模型與已知 cache 都留在 workspace。
+- Server 只以前景程序綁定 localhost，不建立 daemon 或開機啟動項目。
+- 初次大型下載前說明網路與磁碟影響。
 
-1. 先讀 `START-HERE.md`，使用 `scripts/portable/doctor.sh` 盤點。
-2. YouTube 流程的固定 workspace 是根目錄 `.local/youtube-caption/`；除非使用者明確改變設計，不另選外部 workspace。
-3. 不使用 Homebrew、APT、DNF、Pacman、系統 Python、系統 FFmpeg 或全域 npm/pip 安裝。
-4. 第一次下載 Python 套件、Whisper 模型與影片前，先說明網路與磁碟影響；所有持久下載仍須落在 `.local/`。
-5. 服務只以前景程序綁定 localhost；不建立 daemon 或開機啟動項目。
-6. 使用者要完整移除時，先停止程序；刪除整個解壓縮資料夾即可移除所有 workflow-owned 持久資料。
+## Transcription providers
 
-## 基本互動
+- 優先使用影片已有的作者或自動字幕。
+- 本機 provider 不把音訊傳出裝置，但需要較大的套件與模型。
+- OpenAI provider 只有在使用者明確同意這次音訊上傳後才能使用；命令必須帶 "--allow-api-upload" 或 "--consent-to-upload"。
+- 不因環境中有 "OPENAI_API_KEY" 就推定同意。Key 不得寫進檔案、log、狀態、Git 或對話輸出。
+- OpenAI API translation endpoint不是繁中翻譯方案；繁中字幕需保留 VTT cue 時間軸另行翻譯。
 
-- 預設使用繁體中文，保留必要的產品名、檔名與命令原文。
-- 先說結果與影響，再補技術細節。
-- 能從目前環境安全查到的資訊，不重複詢問使用者。
-- 缺少會實質改變結果的選擇時才停下詢問；其餘採保守、可逆的合理預設並說明。
-- 不把網站作者的主張、第三方摘要或 Agent 推論混寫成已證實事實。
+## External state
 
-## 從零環境開始
+- 公開資訊讀取與本機診斷可在任務範圍內執行。
+- 發文、留言、按讚、追蹤、轉發、購買、刪除、登入或撤銷帳號權限，需要對精確動作的明確授權。
+- 不要求使用者貼密碼、cookie、token、API key 或雙重驗證碼；登入由使用者在正式介面完成。
+- 下載媒體前確認使用者有權處理，不繞過 DRM、付費、會員、私人、地區或帳號限制。
 
-任何互動式或需要本機工具的 playbook，都假設使用者沒有對應軟體、套件、登入狀態與背景知識。依序執行：
+## Long-running jobs and UI
 
-1. 盤點作業系統、CPU 架構、可用磁碟、記憶體、網路與 Agent 能控制的工具。
-2. 檢查工具是否已存在，記錄版本與安裝來源；不要直接覆蓋既有安裝。
-3. 列出必要與選用元件，以及安裝位置、估計空間和可能的帳戶／系統影響。
-4. 優先建立在任務工作資料夾內的隔離環境。
-5. 系統層安裝、`sudo`、修改 shell profile、登入或新增 connector 前，取得使用者同意。
-6. 安裝後執行版本檢查與最小功能測試。
-7. 完成任務後提供「下次怎麼用」和「如何移除」。
+- "status.json"、stage、progress、process metadata 與 log 是持久狀態來源；中斷後依檔案恢復，不依記憶猜測。
+- 影片庫首頁保持 read-mostly；新增、重試、取消、刪除與翻譯由 Agent 或明確命令執行。
+- 觀看使用同源 iframe modal；關閉時釋放播放器，播放進度寫回 job。
+- Server 使用 allowlist route，不提供任意目錄瀏覽，不暴露工具、模型或 credentials。
 
-瀏覽器型流程通常不需要本機套件；其安裝階段應改為確認可控制的瀏覽器、網站可達性與使用者自行完成的登入。若沒有可用瀏覽器控制能力，退回「Agent 產生草稿／步驟，使用者手動操作」，不要假裝已操作網站。
+## Update and removal
 
-## 權限與外部狀態
+- 檢查更新是 read-only；只有使用者要求更新才加 "--apply"。
+- Git 只接受 clean worktree 的 fast-forward。Portable release 必須驗證外部 checksum 與內部 manifest，保留 ".local/"。
+- 移除先預覽；工具與使用者產物分開。只有明確要求才包含影片、字幕、log 和播放進度。
+- 完整 portable 移除前停止程序，解析精確 repository root，再確認是否移到垃圾桶。不要對 home 或廣泛父資料夾使用遞迴刪除。
 
-| 動作 | 預設處理 |
-| --- | --- |
-| 讀取公開頁面、檢查本機版本 | 可在任務範圍內執行 |
-| 建立任務工作資料夾與可逆產物 | 使用者要求產出時可執行 |
-| 下載媒體、模型或大型依賴 | 先說明大小、來源與用途 |
-| 安裝系統套件、使用 `sudo` | 先取得明確同意 |
-| 發文、留言、按讚、追蹤、購買、寄信 | 每次依使用者明確授權執行 |
-| 刪除研究、媒體、帳號資料或系統套件 | 先列出精確目標並確認 |
+## Repository maintenance
 
-永遠不要要求使用者把密碼、cookie、API key 或雙重驗證碼貼進對話。需要登入時，讓使用者直接在網站或系統登入畫面完成。
-
-## Playbook 最低內容標準
-
-新增或修改互動式 playbook 時，至少包含：
-
-- 目的、輸入、輸出與不處理的範圍
-- 環境盤點與成功條件
-- 從零開始的安裝／啟用方式
-- 首次使用的逐步流程
-- 驗證與故障排除
-- 日常重複使用與更新方式
-- 給非技術使用者的請求範例
-- 停用、登出、撤銷權限與完整移除方式
-- 哪些動作會改變外部狀態，以及確認點
-
-## 檔案責任
-
-- `README.md`：只當入口、索引與共用概念，不堆積單一任務的完整 SOP。
-- `playbooks/`：任務步驟、決策、檢查與生命週期。
-- `templates/`：可以複製的成品骨架；不得綁定單一影片、帳號或絕對路徑。
-- `knowledge/`：有日期與來源的長期研究，不放操作規則或憑證。
-- `examples/`：展示用法；避免提交大型媒體和受限制內容。
-
-與單一 playbook 專用的腳本放在該 playbook 的 `scripts/`。只有兩個以上 playbook 共同使用且語意一致時，才抽成 repository 共用工具。
-
-## 持續使用的互動介面
-
-- 重複使用的本機流程若有固定首頁，優先讓使用者留在同一個入口觀察所有工作；不要為每個項目建立彼此孤立的首頁。
-- 首頁預設唯讀。新增、重試、取消、刪除、發布等狀態變更仍由 Agent 或明確命令執行，除非 playbook 另外定義確認機制。
-- 長工作要把 state、stage、progress、錯誤與程序識別寫入可持久化狀態；前端重新整理後不能只靠記憶猜測。
-- 媒體 viewer 優先使用 modal／drawer 保留列表上下文；關閉時要釋放播放器或大型資源。
-- 本機 server 只綁 localhost、使用 allowlist 路由，不提供 workspace 任意目錄瀏覽，也不暴露工具、模型或憑證。
-
-## 安裝與移除契約
-
-- 專案內安裝要使用可辨識的單一根目錄，例如 release 的 `.local/<workflow>/.agent-tools/<workflow>`。
-- 安裝流程應記錄自己新增了哪些元件；重新執行要具備冪等性或清楚拒絕覆蓋。
-- 移除流程預設只顯示將移除的內容；真正刪除需要明確旗標或再次確認。
-- 只移除由該流程安裝的系統套件。若無法證明所有權，只提供人工檢查命令，不自動移除。
-- 工具、模型、快取與使用者產物分開；移除工具時預設保留產物。
-- 完成移除後重新檢查路徑、命令與背景程序，並報告仍保留的內容。
-
-## 維護與發布
-
-- 修改前先讀取最新版本與相關文件，避免覆蓋其他人的變更。
-- 保留無關的既有內容；搬移資料時確認新路徑後再移除舊路徑。
-- 文件內命令需通過語法或最小測試；無法實際執行的外部互動要明確標註。
-- 只有使用者明確要求時才 commit、push、建立 PR 或改動外部 repository。
-- 不把本機產物、環境、模型、憑證或下載媒體 commit 進來。
+- 完整 skill 的唯一來源在 "plugins/my-agent-playbook/skills/"；".agents/skills/" 只做 repository discovery bridge。
+- Plugin、marketplace、每個 SKILL.md 與 agents/openai.yaml 都要通過官方 validator。
+- 文件命令與腳本需有語法或最小整合測試。大型媒體、模型、環境、cache 與 credentials 不得 commit。
+- 只有使用者明確要求時才 commit、push、release 或變更外部 repository。

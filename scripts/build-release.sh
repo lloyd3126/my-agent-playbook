@@ -32,7 +32,7 @@ package_name="my-agent-playbook-v${version}"
 package_dir="$stage/$package_name"
 mkdir -p "$package_dir"
 
-if git -C "$REPO_ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+if [ "${PLAYBOOK_RELEASE_SOURCE:-commit}" = "commit" ] && git -C "$REPO_ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   git -C "$REPO_ROOT" archive --format=tar HEAD | tar -xf - -C "$package_dir"
 else
   tar \

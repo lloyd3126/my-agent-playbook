@@ -1,0 +1,4 @@
+interface:
+  display_name: "Playbook 管理器"
+  short_description: "Inspect update and remove My Agent Playbook safely"
+  default_prompt: "Use $playbook-manager to inspect and safely update My Agent Playbook."
