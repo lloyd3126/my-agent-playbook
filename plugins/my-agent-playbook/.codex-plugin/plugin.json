@@ -1,23 +1,24 @@
 {
   "name": "my-agent-playbook",
-  "version": "0.2.0",
-  "description": "Reusable Codex skills for a portable caption library, transcription, research, publishing, and lifecycle management.",
+  "version": "0.3.0",
+  "description": "Reusable Codex skills for source-backed research, knowledge maintenance, X publishing, and lifecycle management.",
   "author": {
     "name": "lloyd3126"
   },
   "skills": "./skills/",
   "interface": {
     "displayName": "My Agent Playbook",
-    "shortDescription": "Portable media and research workflows for Codex.",
-    "longDescription": "Build a local YouTube caption library, transcribe with local Whisper or the OpenAI API, maintain the plugin, and run source-backed research workflows.",
+    "shortDescription": "Source-backed research and publishing playbooks for Codex.",
+    "longDescription": "Research public X accounts, draft and publish reviewed X threads, analyze companies with traceable sources, maintain knowledge files, and safely update or remove the plugin.",
     "developerName": "lloyd3126",
     "category": "Productivity",
     "capabilities": [
-      "Local caption video library",
-      "Local or OpenAI API transcription",
-      "Safe self-update and removal",
-      "Source-backed research workflows"
+      "Read-only X account research",
+      "Reviewed X thread publishing",
+      "Source-backed company analysis",
+      "Knowledge record maintenance",
+      "Safe self-update and removal"
     ],
-    "defaultPrompt": "Help me choose and run the right My Agent Playbook skill while keeping local tools isolated."
+    "defaultPrompt": "Help me choose and run the right My Agent Playbook research or publishing skill with traceable sources and explicit approval for external changes."
   }
 }

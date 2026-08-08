@@ -1,4 +1,0 @@
-interface:
-  display_name: "媒體轉錄"
-  short_description: "Create timestamped transcripts with local or API providers"
-  default_prompt: "Use $transcribe-media to transcribe this media with timestamps."

@@ -2,7 +2,7 @@
   "name": "my-agent-playbook",
   "interface": {
     "displayName": "My Agent Playbook",
-    "description": "Portable Codex workflows maintained by lloyd3126."
+    "description": "Source-backed research and publishing playbooks maintained by lloyd3126."
   },
   "plugins": [
     {

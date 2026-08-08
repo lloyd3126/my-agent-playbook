@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import os
-import stat
 import subprocess
 import tempfile
 import unittest
@@ -37,28 +36,18 @@ class PortableReleaseTests(unittest.TestCase):
                 self.assertIn(prefix + "START-HERE.md", names)
                 self.assertIn(prefix + "VERSION", names)
                 self.assertIn(prefix + "MANIFEST.sha256", names)
-                self.assertIn(prefix + "scripts/portable/setup.sh", names)
-                self.assertIn(prefix + "scripts/portable/update.sh", names)
                 self.assertIn(prefix + ".agents/plugins/marketplace.json", names)
-                self.assertIn(prefix + ".agents/skills/youtube-caption-library/SKILL.md", names)
+                self.assertIn(prefix + ".agents/skills/x-account-research/SKILL.md", names)
+                self.assertIn(prefix + ".agents/skills/x-thread-publishing/SKILL.md", names)
+                self.assertIn(prefix + ".agents/skills/statementdog-company-analysis/SKILL.md", names)
+                self.assertIn(prefix + ".agents/skills/playbook-manager/SKILL.md", names)
                 self.assertIn(prefix + "plugins/my-agent-playbook/.codex-plugin/plugin.json", names)
+                self.assertFalse(any("scripts/portable/" in name for name in names))
+                self.assertFalse(any("youtube-caption-library" in name for name in names))
+                self.assertFalse(any("transcribe-media" in name for name in names))
                 forbidden_parts = {".git", ".local", "dist", "__pycache__"}
                 self.assertFalse(any(forbidden_parts.intersection(Path(name).parts) for name in names))
                 self.assertFalse(any(name.endswith((".mp4", ".pt", ".pyc", ".pyo")) for name in names))
-                mode = bundle.getinfo(prefix + "scripts/portable/setup.sh").external_attr >> 16
-                self.assertTrue(mode & stat.S_IXUSR)
-
-    def test_portable_workspace_is_derived_from_repository_root(self) -> None:
-        result = subprocess.run(
-            ["bash", "-c", ". scripts/portable/common.sh; printf '%s\\n' \"$PORTABLE_WORKSPACE\""],
-            cwd=REPO_ROOT,
-            text=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            check=True,
-        )
-        expected = REPO_ROOT / ".local" / "youtube-caption"
-        self.assertEqual(Path(result.stdout.strip()), expected)
 
 
 if __name__ == "__main__":

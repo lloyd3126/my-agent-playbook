@@ -36,8 +36,8 @@ Preview first:
 python3 plugins/my-agent-playbook/skills/playbook-manager/scripts/manage.py uninstall
 ~~~
 
-For a Codex installation, "--apply" removes the plugin; "--remove-marketplace" also removes its marketplace registration. For Git/portable mode, cleanup delegates to the workflow uninstaller. "--include-library" is destructive and requires explicit authorization.
+For a Codex installation, `--apply` removes the plugin; `--remove-marketplace` also removes its marketplace registration. For Git/portable mode, the manager reports the exact repository root and whether `.local/` exists; it does not delete its own folder.
 
-The manager does not delete its own repository folder. For complete removal, stop the local server and jobs, run the authorized cleanup, resolve the exact repository root, then ask before moving that one folder to Trash. Report whether videos and subtitles were retained.
+For complete Git/portable removal, inspect `.local/`, decide whether anything must be copied out, then obtain explicit confirmation before moving that exact repository folder to Trash. There is no media runtime in My Agent Playbook v0.3.0+. Video workflows belong to Xeruca Player.
 
 Read [references/lifecycle.md](references/lifecycle.md) before changing updater behavior or release layout.

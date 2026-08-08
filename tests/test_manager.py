@@ -28,7 +28,7 @@ def write_manifest(root: Path, relatives: list[str]) -> None:
 
 class ManagerTests(unittest.TestCase):
     def test_current_checkout_is_detected(self) -> None:
-        self.assertEqual(manager.plugin_version(), "0.2.0")
+        self.assertEqual(manager.plugin_version(), "0.3.0")
         self.assertEqual(manager.find_repository_root(), REPO_ROOT)
         self.assertEqual(manager.installation_mode(REPO_ROOT), "git")
 
@@ -50,8 +50,20 @@ class ManagerTests(unittest.TestCase):
             self.assertEqual(manager.verify_manifest(root, root / "MANIFEST.sha256"), ["symlink: managed"])
 
     def test_version_comparison_prevents_release_downgrades(self) -> None:
-        self.assertGreater(manager.version_key("0.2.0"), manager.version_key("0.1.9"))
+        self.assertGreater(manager.version_key("0.3.0"), manager.version_key("0.2.9"))
         self.assertEqual(manager.version_key("v1.2.3"), (1, 2, 3))
+
+    def test_git_uninstall_is_a_non_destructive_folder_preview(self) -> None:
+        result = manager.uninstall(
+            mode="git",
+            root=REPO_ROOT,
+            apply=False,
+            remove_marketplace=False,
+        )
+        self.assertEqual(result["status"], "preview")
+        self.assertEqual(Path(result["repositoryRoot"]), REPO_ROOT)
+        self.assertTrue(result["managerDeletedNothing"])
+        self.assertIn("explicit confirmation", result["next"])
 
     def test_portable_update_preserves_local_data_and_removes_obsolete_managed_file(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

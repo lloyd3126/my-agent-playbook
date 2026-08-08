@@ -1,136 +1,97 @@
 # My Agent Playbook
 
-這是一套以 Codex 為主要使用者的 skills 與 plugin，同時保留「下載 Release ZIP、解壓縮、用 Codex 開啟資料夾就能開始」的可攜模式。
+一套給 Codex 使用的可追溯研究與發布 skills。它同時支援 Codex plugin，以及「下載 Release ZIP、解壓縮、用 Codex 開啟資料夾就開始」的 repository-scoped 模式。
 
-目前包含固定首頁的本機字幕影片庫、本機 Whisper／OpenAI API 轉錄、安全更新與移除、X 研究／發布流程，以及財報狗公司研究。
+自 `v0.3.0` 起，影片下載、轉錄、翻譯與本機播放器已獨立為 [Xeruca Player](https://github.com/lloyd3126/xeruca-player)。這個 repository 專注於研究、知識累積、X 串文與自身版本管理，不再重複維護媒體 runtime。
 
-## 兩種使用模式
+## 最快開始
 
-| 模式 | 適合誰 | Codex 設定影響 | 工具與影片 |
-| --- | --- | --- | --- |
-| Release ZIP / Git 資料夾 | 希望所有內容跟著資料夾走 | 無；repository-scoped skills 由 Codex 在資料夾內發現 | 全部放在 ".local/" |
-| Codex plugin | 希望每個 Codex task 都能使用 | marketplace、plugin cache 與設定由 Codex 管理 | 影片庫仍可指定在專案內 |
+### Release ZIP / Git 資料夾
 
-可攜模式最符合「刪除整個資料夾即移除 workflow-owned 持久資料」的需求。Plugin 模式需要先用 "$playbook-manager" 移除 Codex 設定與 cache。
+1. 從 GitHub Releases 下載 `my-agent-playbook-vVERSION-portable.zip` 與同名 `.sha256`，或 clone repository。
+2. 用 Codex 開啟整個資料夾。
+3. 直接說：
 
-## 最快開始：Release ZIP
+> 請使用 $x-account-research，研究這個 X 帳號最近七天的公開貼文，保留日期與來源連結，不要按讚、追蹤、回覆或發布任何內容。
 
-1. 從 GitHub Releases 下載 "my-agent-playbook-vVERSION-portable.zip" 與同名 ".sha256"。
-2. 驗證 checksum 並解壓縮。
-3. 用 Codex 開啟整個資料夾。
-4. 直接說：
+Codex 會從 `.agents/skills/` 發現入口，再讀取 `plugins/my-agent-playbook/skills/` 的 canonical skill；不需要先安裝 plugin。
 
-> 請使用 $youtube-caption-library，先檢查這個可攜式工作區。所有工具與資料都留在此資料夾；說明本機與 API 轉錄的差異後，幫我啟動影片庫。
+### Codex plugin
 
-Codex 會從 ".agents/skills/" 發現 repository-scoped 入口，再讀取 "plugins/my-agent-playbook/skills/" 的完整 skill。
-
-## 安裝成 Codex plugin
-
-若要在所有 Codex 工作中使用：
-
-~~~bash
+```bash
 codex plugin marketplace add https://github.com/lloyd3126/my-agent-playbook.git
 codex plugin add my-agent-playbook@my-agent-playbook
-~~~
+```
 
-完成後重新開啟 Codex task。Plugin manifest 位於 "plugins/my-agent-playbook/.codex-plugin/plugin.json"，marketplace 位於 ".agents/plugins/marketplace.json"。
+完成後重新開啟 Codex task。
 
 ## Skills
 
 | Skill | 用途 | 範例請求 |
 | --- | --- | --- |
-| "$youtube-caption-library" | 下載、字幕、轉錄、翻譯、本機影片庫 | 「把這支有權處理的 YouTube 影片加入本機影片庫」 |
-| "$transcribe-media" | 本機或 OpenAI API 時間軸轉錄 | 「用 API 轉錄這支檔案並輸出 VTT」 |
-| "$playbook-manager" | 檢查版本、更新、診斷、移除 | 「檢查更新，先不要套用」 |
-| "$x-account-research" | X 公開內容只讀研究 | 「整理這個帳號最近七天的公開貼文」 |
-| "$x-thread-publishing" | X 串文草稿與經確認後發布 | 「把這份內容整理成串文，先不要發布」 |
-| "$statementdog-company-analysis" | 公司、財務與產業研究 | 「以財報狗與原始來源研究這家公司」 |
+| `$x-account-research` | X 公開內容的只讀研究與知識檔更新 | 「整理這個帳號最近七天的公開貼文」 |
+| `$x-thread-publishing` | X 串文草稿、長度檢查與經確認後發布 | 「把這份內容整理成串文，先不要發布」 |
+| `$statementdog-company-analysis` | 公司、財務與產業的來源化研究 | 「以財報狗與原始揭露研究這家公司」 |
+| `$playbook-manager` | 檢查版本、安全更新與完整移除 | 「檢查更新，先不要套用」 |
 
-## 本機影片庫
+研究 skills 會區分來源事實、平台評論與 Agent 推論。草稿與只讀研究不造成外部變更；發布、回覆、刪除、按讚、追蹤與轉發都必須取得精確動作的明確授權。
 
-影片庫固定入口是 "http://127.0.0.1:8000/"。首頁顯示下載中、轉錄中、待翻譯、失敗與完成等狀態；觀看時在同頁 iframe modal 開啟，播放進度寫回 job 資料夾。
+## 需要處理影片？
 
-Portable 命令：
+請改用 Xeruca Player：
 
-~~~bash
-scripts/portable/doctor.sh
-scripts/portable/setup.sh --provider local --model turbo
-scripts/portable/serve.sh 8000
-scripts/portable/add-video.sh 'YOUTUBE_URL'
-~~~
+```bash
+codex plugin marketplace add https://github.com/lloyd3126/xeruca-player.git
+codex plugin add xeruca-player@xeruca-player
+```
 
-API 模式不下載 Whisper 模型，但音訊會傳到 OpenAI 且可能產生費用：
+然後對 Codex 說：
 
-~~~bash
-scripts/portable/setup.sh --provider openai
-export OPENAI_API_KEY='只放在目前 terminal'
-scripts/portable/add-video.sh 'YOUTUBE_URL' --provider openai --allow-api-upload
-~~~
-
-程式不會儲存或輸出 API key。API 轉錄以 "whisper-1" 取得 segment timestamps，並把音訊切成符合 25 MB 上限的片段後還原成單一時間軸。
+> 請使用 $watch-video，把這支我有權處理的影片加入 Xeruca Player，取得字幕、翻成繁體中文並在本機影片庫開啟。
 
 ## 更新
 
-最簡單的互動方式：
+先檢查，不修改：
 
-> 請使用 $playbook-manager 檢查 my-agent-playbook 是否有更新；先報告差異，不要套用。
-
-> 請使用 $playbook-manager 安全更新；保留 ".local/"、影片、字幕與播放進度，完成後驗證版本。
-
-命令：
-
-~~~bash
+```bash
 python3 plugins/my-agent-playbook/skills/playbook-manager/scripts/manage.py status
 python3 plugins/my-agent-playbook/skills/playbook-manager/scripts/manage.py update
-python3 plugins/my-agent-playbook/skills/playbook-manager/scripts/manage.py update --apply
-~~~
+```
 
-Git 模式只接受乾淨 worktree 的 fast-forward；plugin 模式使用 Codex marketplace upgrade；portable 模式驗證 release checksum 與內部 manifest，先備份 managed files，永遠保留 ".local/"。
+取得使用者明確同意後套用：
+
+```bash
+python3 plugins/my-agent-playbook/skills/playbook-manager/scripts/manage.py update --apply
+```
+
+Git 模式只接受乾淨 worktree 的 fast-forward；plugin 模式使用 Codex marketplace upgrade；Release ZIP 模式驗證外部 checksum 與內部 manifest，拒絕覆蓋被修改的 managed files，並保留 `.local/` 中的 updater backup 或使用者資料。
 
 ## 移除
 
-Portable 預覽：
+Plugin 模式：
 
-~~~bash
-scripts/portable/uninstall.sh
-~~~
-
-移除工具、模型與 cache，保留影片庫：
-
-~~~bash
-scripts/portable/uninstall.sh --yes
-~~~
-
-連影片、字幕、log 與播放進度一起移除：
-
-~~~bash
-scripts/portable/uninstall.sh --include-generated --yes
-~~~
-
-停止所有前景程序後，再把解壓縮資料夾移到垃圾桶，即可完整移除 portable 模式。系統瀏覽器的一般歷史與 cache 依瀏覽器政策管理，不屬於本專案。
-
-Plugin 模式請用：
-
-~~~bash
+```bash
 codex plugin remove my-agent-playbook@my-agent-playbook
 codex plugin marketplace remove my-agent-playbook
-~~~
+```
+
+Git／Release ZIP 模式不會在專案外安裝研究 runtime。先讓 `$playbook-manager` 回報精確 repository root 與 `.local/` 狀況，確認是否要保留其中資料，再把「這一個資料夾」移到垃圾桶即可完整移除。Manager 不會自刪 repository，也不會對 home 或父資料夾做廣泛刪除。
 
 ## Repository 結構
 
-~~~text
+```text
 my-agent-playbook/
 ├── .agents/
 │   ├── plugins/marketplace.json
-│   └── skills/                       # 開啟資料夾即可發現的薄入口
+│   └── skills/                       # 資料夾模式的 discovery bridge
 ├── plugins/my-agent-playbook/
 │   ├── .codex-plugin/plugin.json
 │   └── skills/                       # 唯一完整 skill 實作
 ├── knowledge/                        # 可追溯、可持續更新的研究
-├── scripts/portable/                 # 固定使用 repository 內 ".local/"
-├── tests/                            # 結構、腳本、server、provider、release 測試
+├── scripts/build-release.sh          # 產生含 manifest 的 Release ZIP
+├── tests/                            # manager 與 release 結構測試
 ├── START-HERE.md
 └── VERSION
-~~~
+```
 
-大型媒體、模型、venv、cache、cookie、token、密碼與 API key 不進 Git。下載與處理媒體前，使用者必須確認自己有相應權利。
+Cookie、token、密碼、API key、個人資料與未授權內容不得進入 Git。

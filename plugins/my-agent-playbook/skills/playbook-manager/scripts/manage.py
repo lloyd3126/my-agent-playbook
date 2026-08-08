@@ -286,7 +286,7 @@ def plugin_update(*, apply: bool) -> dict[str, Any]:
     return {"mode": "plugin", "status": "updated", "results": results}
 
 
-def uninstall(*, mode: str, root: Path | None, apply: bool, include_library: bool, remove_marketplace: bool) -> dict[str, Any]:
+def uninstall(*, mode: str, root: Path | None, apply: bool, remove_marketplace: bool) -> dict[str, Any]:
     if mode == "plugin":
         commands = [["codex", "plugin", "remove", f"{PLUGIN_NAME}@{MARKETPLACE_NAME}", "--json"]]
         if remove_marketplace:
@@ -297,18 +297,14 @@ def uninstall(*, mode: str, root: Path | None, apply: bool, include_library: boo
         return {"mode": mode, "action": "rerun with --apply", "commands": [" ".join(item) for item in commands]}
 
     assert root is not None
-    portable_uninstall = root / "scripts" / "portable" / "uninstall.sh"
-    command = [str(portable_uninstall)]
-    if include_library:
-        command.append("--include-generated")
-    if apply:
-        command.append("--yes")
-    result = run(command, cwd=root)
+    local_root = root / ".local"
     return {
         "mode": mode,
-        "runtimeCleanup": result.stdout.strip(),
-        "repositoryPreserved": str(root),
-        "next": "After explicit confirmation, move this exact repository folder to Trash for complete removal.",
+        "status": "ready-for-folder-removal" if apply else "preview",
+        "repositoryRoot": str(root),
+        "localData": str(local_root) if local_root.exists() else None,
+        "managerDeletedNothing": True,
+        "next": "Inspect .local and preserve anything requested, then obtain explicit confirmation before moving this exact repository folder to Trash.",
     }
 
 
@@ -326,7 +322,6 @@ def build_parser() -> argparse.ArgumentParser:
     uninstall_parser = subparsers.add_parser("uninstall")
     uninstall_parser.add_argument("--mode", choices=("auto", "git", "plugin", "portable"), default="auto")
     uninstall_parser.add_argument("--apply", action="store_true")
-    uninstall_parser.add_argument("--include-library", action="store_true")
     uninstall_parser.add_argument("--remove-marketplace", action="store_true")
     return parser
 
@@ -341,7 +336,7 @@ def main() -> int:
             "version": plugin_version(),
             "mode": detected,
             "repositoryRoot": str(root) if root else None,
-            "portableData": str(root / ".local") if root else None,
+            "localData": str(root / ".local") if root and (root / ".local").exists() else None,
         }
     else:
         mode = detected if args.mode == "auto" else args.mode
@@ -364,7 +359,6 @@ def main() -> int:
                 mode=mode,
                 root=root,
                 apply=args.apply,
-                include_library=args.include_library,
                 remove_marketplace=args.remove_marketplace,
             )
     print(json.dumps(payload, ensure_ascii=False, indent=2))
