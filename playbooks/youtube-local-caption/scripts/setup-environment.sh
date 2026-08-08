@@ -95,6 +95,15 @@ install_ffmpeg_package() {
   ffmpeg_installed_by_workflow=1
 }
 
+write_install_state() {
+  {
+    printf 'FFMPEG_INSTALLED_BY_WORKFLOW=%s\n' "$ffmpeg_installed_by_workflow"
+    printf 'FFMPEG_PACKAGE_MANAGER=%s\n' "$ffmpeg_package_manager"
+    printf 'PYTHON_SERIES=3.11\n'
+    printf 'DEFAULT_MODEL=%s\n' "$model_name"
+  } > "$CAPTION_STATE"
+}
+
 if ! command -v ffmpeg >/dev/null 2>&1 || ! command -v ffprobe >/dev/null 2>&1; then
   if [ "$install_ffmpeg" -eq 1 ]; then
     install_ffmpeg_package
@@ -102,6 +111,9 @@ if ! command -v ffmpeg >/dev/null 2>&1 || ! command -v ffprobe >/dev/null 2>&1; 
     caption_die "FFmpeg is missing. Install it manually, or rerun with --install-ffmpeg after the user approves a system package change"
   fi
 fi
+
+# Record system-package ownership before later network or model downloads can fail.
+write_install_state
 
 caption_note "Installing workflow-local uv..."
 curl -LsSf https://astral.sh/uv/install.sh | env UV_UNMANAGED_INSTALL="$CAPTION_BIN" sh
@@ -150,11 +162,6 @@ if [ "$skip_model" -eq 0 ]; then
   "$CAPTION_PYTHON" -c 'import sys, whisper; whisper.load_model(sys.argv[1], download_root=sys.argv[2]); print("model ready:", sys.argv[1])' "$model_name" "$CAPTION_MODELS"
 fi
 
-{
-  printf 'FFMPEG_INSTALLED_BY_WORKFLOW=%s\n' "$ffmpeg_installed_by_workflow"
-  printf 'FFMPEG_PACKAGE_MANAGER=%s\n' "$ffmpeg_package_manager"
-  printf 'PYTHON_SERIES=3.11\n'
-  printf 'DEFAULT_MODEL=%s\n' "$model_name"
-} > "$CAPTION_STATE"
+write_install_state
 
 caption_note "Setup complete. Run: $SCRIPT_DIR/doctor.sh $CAPTION_WORKSPACE"

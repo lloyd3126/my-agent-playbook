@@ -393,11 +393,18 @@
         }
 
         function cleanCueText(value) {
-          const container = document.createElement("div");
-          container.innerHTML = value
+          return value
             .replace(/<\/?c(?:\.[^>]*)?>/g, "")
-            .replace(/<\d{2}:\d{2}(?::\d{2})?\.\d{3}>/g, "");
-          return (container.textContent || "").replace(/\s+/g, " ").trim();
+            .replace(/<\d{2}:\d{2}(?::\d{2})?\.\d{3}>/g, "")
+            .replace(/<[^>]*>/g, "")
+            .replace(/&nbsp;/g, " ")
+            .replace(/&amp;/g, "&")
+            .replace(/&lt;/g, "<")
+            .replace(/&gt;/g, ">")
+            .replace(/&quot;/g, '"')
+            .replace(/&#39;/g, "'")
+            .replace(/\s+/g, " ")
+            .trim();
         }
 
         function parseVtt(source) {

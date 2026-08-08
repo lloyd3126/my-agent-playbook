@@ -30,6 +30,15 @@ while [ "$#" -gt 0 ]; do
 done
 
 [ -n "$video_file" ] && [ -n "$zh_file" ] && [ -n "$en_file" ] && [ -n "$output_dir" ] || { usage >&2; exit 1; }
+case "/$output_dir/" in
+  *'/../'*) caption_die "player output may not contain a parent-directory segment (..)" ;;
+esac
+
+output_dir=$(caption_abs_path "$output_dir")
+[ "$output_dir" != "/" ] || caption_die "refusing to use the filesystem root as player output"
+if [ -n "${HOME:-}" ] && [ "$output_dir" = "$HOME" ]; then
+  caption_die "refusing to use the home directory as player output; choose a dedicated child directory"
+fi
 
 caption_require_file "$video_file"
 caption_validate_vtt "$zh_file"
@@ -53,4 +62,3 @@ ffprobe -v error -show_entries format=duration:stream=codec_type,codec_name -of 
 
 caption_note "Player prepared: $output_dir"
 caption_note "Start it with serve-player.sh; do not open index.html through file://"
-
