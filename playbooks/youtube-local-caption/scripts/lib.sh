@@ -1,0 +1,93 @@
+#!/usr/bin/env bash
+
+caption_die() {
+  printf 'error: %s\n' "$*" >&2
+  exit 1
+}
+
+caption_note() {
+  printf '%s\n' "$*"
+}
+
+caption_abs_path() {
+  local input_path="$1"
+  local parent_path
+  local base_name
+
+  case "$input_path" in
+    /*) ;;
+    *) input_path="$PWD/$input_path" ;;
+  esac
+
+  if [ -d "$input_path" ]; then
+    (cd "$input_path" && pwd -P)
+    return
+  fi
+
+  parent_path=$(dirname "$input_path")
+  base_name=$(basename "$input_path")
+  if [ -d "$parent_path" ]; then
+    parent_path=$(cd "$parent_path" && pwd -P)
+  fi
+  printf '%s/%s\n' "${parent_path%/}" "$base_name"
+}
+
+caption_set_paths() {
+  [ "$#" -eq 1 ] || caption_die "caption_set_paths requires one workspace path"
+
+  CAPTION_WORKSPACE=$(caption_abs_path "$1")
+  CAPTION_RUNTIME="$CAPTION_WORKSPACE/.agent-tools/youtube-local-caption"
+  CAPTION_BIN="$CAPTION_RUNTIME/bin"
+  CAPTION_VENV="$CAPTION_RUNTIME/.venv"
+  CAPTION_MODELS="$CAPTION_RUNTIME/models"
+  CAPTION_UV_CACHE="$CAPTION_RUNTIME/uv-cache"
+  CAPTION_UV_PYTHON="$CAPTION_RUNTIME/python"
+  CAPTION_DENO_CACHE="$CAPTION_RUNTIME/deno-cache"
+  CAPTION_STATE="$CAPTION_RUNTIME/install-state.env"
+  CAPTION_UV="$CAPTION_BIN/uv"
+  CAPTION_DENO="$CAPTION_BIN/deno"
+  CAPTION_PYTHON="$CAPTION_VENV/bin/python"
+  CAPTION_YTDLP="$CAPTION_VENV/bin/yt-dlp"
+  CAPTION_WHISPER="$CAPTION_VENV/bin/whisper"
+
+  export UV_CACHE_DIR="$CAPTION_UV_CACHE"
+  export UV_PYTHON_INSTALL_DIR="$CAPTION_UV_PYTHON"
+  export UV_PYTHON_BIN_DIR="$CAPTION_BIN"
+  export DENO_DIR="$CAPTION_DENO_CACHE"
+}
+
+caption_assert_safe_workspace() {
+  [ -n "${CAPTION_WORKSPACE:-}" ] || caption_die "workspace is not initialized"
+  [ "$CAPTION_WORKSPACE" != "/" ] || caption_die "refusing to use the filesystem root as workspace"
+  if [ -n "${HOME:-}" ] && [ "$CAPTION_WORKSPACE" = "$HOME" ]; then
+    caption_die "refusing to use the home directory as workspace; choose a dedicated child directory"
+  fi
+}
+
+caption_require_runtime() {
+  [ -x "$CAPTION_PYTHON" ] || caption_die "runtime is not installed: run setup-environment.sh first"
+  [ -x "$CAPTION_YTDLP" ] || caption_die "yt-dlp is missing: run setup-environment.sh first"
+  [ -x "$CAPTION_DENO" ] || caption_die "Deno is missing: run setup-environment.sh first"
+}
+
+caption_require_file() {
+  [ -f "$1" ] || caption_die "file not found: $1"
+}
+
+caption_require_command() {
+  command -v "$1" >/dev/null 2>&1 || caption_die "required command not found: $1"
+}
+
+caption_validate_vtt() {
+  local vtt_path="$1"
+  caption_require_file "$vtt_path"
+  grep -q '^WEBVTT' "$vtt_path" || caption_die "VTT header missing: $vtt_path"
+  grep -q -- '-->' "$vtt_path" || caption_die "no VTT cues found: $vtt_path"
+}
+
+caption_state_value() {
+  local state_path="$1"
+  local state_key="$2"
+  [ -f "$state_path" ] || return 0
+  awk -F= -v wanted="$state_key" '$1 == wanted { value = substr($0, index($0, "=") + 1); print value; exit }' "$state_path"
+}

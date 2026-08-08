@@ -3,50 +3,151 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>本機影片字幕播放器</title>
+    <meta name="color-scheme" content="dark" />
+    <title>本機字幕播放室</title>
     <link rel="stylesheet" href="https://cdn.plyr.io/3.8.4/plyr.css" />
     <style>
       :root {
         color-scheme: dark;
-        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-        background: #111827;
-        color: #f9fafb;
+        --ink: #f4f0e8;
+        --muted: #aaa69e;
+        --line: rgb(244 240 232 / 14%);
+        --panel: #151513;
+        --panel-raised: #1d1c19;
+        --black: #090a09;
+        --signal: #f3a712;
+        --signal-soft: #ffd783;
+        --danger: #ff7d6e;
+        --plyr-color-main: var(--signal);
+        font-family: "Avenir Next", Avenir, "Helvetica Neue", sans-serif;
+        background: var(--black);
+        color: var(--ink);
+      }
+
+      * {
+        box-sizing: border-box;
       }
 
       body {
-        max-width: 960px;
+        min-width: 320px;
+        min-height: 100vh;
+        margin: 0;
+        background:
+          radial-gradient(circle at 83% 7%, rgb(243 167 18 / 13%), transparent 28rem),
+          linear-gradient(180deg, #11110f 0, var(--black) 38rem);
+      }
+
+      body::before {
+        position: fixed;
+        inset: 0;
+        z-index: -1;
+        background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.05'/%3E%3C/svg%3E");
+        content: "";
+        opacity: 0.55;
+        pointer-events: none;
+      }
+
+      main {
+        width: min(1180px, calc(100% - 40px));
         margin: 0 auto;
-        padding: 32px 20px;
+        padding: clamp(32px, 6vw, 76px) 0 56px;
+      }
+
+      .masthead {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 24px;
+        align-items: end;
+        margin-bottom: 24px;
+      }
+
+      .kicker {
+        margin: 0 0 8px;
+        color: var(--signal-soft);
+        font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
       }
 
       h1 {
-        font-size: 1.4rem;
-        margin: 0 0 20px;
+        max-width: 18ch;
+        margin: 0;
+        font-family: "Iowan Old Style", Baskerville, "Times New Roman", serif;
+        font-size: clamp(2rem, 4.7vw, 4.9rem);
+        font-weight: 500;
+        letter-spacing: -0.045em;
+        line-height: 0.94;
+        text-wrap: balance;
+      }
+
+      .runtime-badge {
+        display: inline-flex;
+        gap: 9px;
+        align-items: center;
+        padding: 9px 12px;
+        border: 1px solid var(--line);
+        color: var(--muted);
+        font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+        font-size: 0.72rem;
+        letter-spacing: 0.04em;
+        white-space: nowrap;
+      }
+
+      .runtime-badge::before {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: var(--signal);
+        box-shadow: 0 0 16px rgb(243 167 18 / 85%);
+        content: "";
+      }
+
+      .player-shell {
+        overflow: hidden;
+        border: 1px solid var(--line);
+        background: #000;
+        box-shadow: 0 28px 80px rgb(0 0 0 / 48%);
       }
 
       .player-wrap {
         position: relative;
-        --plyr-color-main: #f97316;
+        aspect-ratio: 16 / 9;
+        background: #000;
+      }
+
+      .player-wrap video,
+      .player-wrap .plyr {
+        width: 100%;
+        height: 100%;
       }
 
       .player-wrap video {
-        width: 100%;
+        display: block;
+        object-fit: contain;
       }
 
       .custom-caption {
         position: absolute;
-        right: 5%;
-        bottom: 4.5rem;
-        left: 5%;
-        z-index: 2;
-        padding: 0.35rem 0.7rem;
-        border-radius: 0.35rem;
-        background: rgb(0 0 0 / 75%);
+        right: 6%;
+        bottom: clamp(4.4rem, 9%, 6.4rem);
+        left: 6%;
+        z-index: 3;
+        width: fit-content;
+        max-width: 88%;
+        margin: 0 auto;
+        padding: 0.42em 0.72em 0.48em;
+        border-radius: 0.12em;
+        background: rgb(4 4 4 / 82%);
+        box-decoration-break: clone;
         color: #fff;
-        font-size: clamp(1rem, 2.1vw, 1.45rem);
-        line-height: 1.45;
+        font-family: "Avenir Next", Avenir, "PingFang TC", sans-serif;
+        font-size: clamp(1rem, 2.15vw, 1.55rem);
+        font-weight: 650;
+        line-height: 1.42;
         text-align: center;
-        text-shadow: 0 1px 2px rgb(0 0 0 / 90%);
+        text-shadow: 0 1px 3px #000;
         pointer-events: none;
       }
 
@@ -54,154 +155,397 @@
         display: none;
       }
 
-      .status,
-      .caption-control {
-        color: #cbd5e1;
-        font-size: 0.9rem;
-        line-height: 1.6;
-        margin-top: 16px;
+      .control-deck {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(260px, 0.6fr);
+        border-top: 1px solid var(--line);
+        background: var(--panel);
       }
 
-      .caption-control {
+      .status-panel,
+      .caption-panel {
+        min-height: 112px;
+        padding: 22px 24px;
+      }
+
+      .caption-panel {
+        border-left: 1px solid var(--line);
+        background: var(--panel-raised);
+      }
+
+      .label {
+        display: block;
+        margin-bottom: 9px;
+        color: var(--muted);
+        font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+        font-size: 0.66rem;
+        font-weight: 700;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+      }
+
+      .status {
+        margin: 0;
+        color: var(--ink);
+        font-size: 0.95rem;
+        line-height: 1.55;
+      }
+
+      .caption-row {
         display: flex;
+        gap: 12px;
         align-items: center;
-        gap: 0.6rem;
       }
 
-      .caption-control select {
-        border: 1px solid #475569;
-        border-radius: 0.4rem;
-        padding: 0.35rem 0.5rem;
-        background: #1e293b;
-        color: #f8fafc;
+      select {
+        min-width: 145px;
+        border: 0;
+        border-bottom: 1px solid #58544b;
+        border-radius: 0;
+        padding: 8px 28px 8px 0;
+        background: transparent;
+        color: var(--ink);
+        font: inherit;
+      }
+
+      select:focus-visible {
+        outline: 2px solid var(--signal);
+        outline-offset: 4px;
+      }
+
+      .caption-status {
+        color: var(--muted);
+        font-size: 0.82rem;
+        line-height: 1.4;
+      }
+
+      .caption-status[data-error="true"] {
+        color: var(--danger);
+      }
+
+      .footnote {
+        display: flex;
+        justify-content: space-between;
+        gap: 20px;
+        margin-top: 16px;
+        color: #77736c;
+        font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+        font-size: 0.68rem;
+        line-height: 1.5;
+      }
+
+      @media (max-width: 720px) {
+        main {
+          width: min(100% - 24px, 1180px);
+          padding-top: 28px;
+        }
+
+        .masthead,
+        .control-deck {
+          grid-template-columns: 1fr;
+        }
+
+        .runtime-badge {
+          justify-self: start;
+        }
+
+        .caption-panel {
+          border-top: 1px solid var(--line);
+          border-left: 0;
+        }
+
+        .status-panel,
+        .caption-panel {
+          min-height: auto;
+          padding: 18px;
+        }
+
+        .custom-caption {
+          bottom: 3.6rem;
+        }
+
+        .footnote {
+          display: block;
+        }
+      }
+
+      @media (prefers-reduced-motion: no-preference) {
+        .masthead,
+        .player-shell,
+        .footnote {
+          animation: arrive 520ms ease-out both;
+        }
+
+        .player-shell {
+          animation-delay: 80ms;
+        }
+
+        .footnote {
+          animation-delay: 150ms;
+        }
+
+        @keyframes arrive {
+          from {
+            opacity: 0;
+            transform: translateY(10px);
+          }
+        }
       }
     </style>
   </head>
 
   <body>
-    <h1>本機影片字幕播放器</h1>
+    <main>
+      <header class="masthead">
+        <div>
+          <p id="kicker" class="kicker">Local screening · transcript edition</p>
+          <h1 id="page-title">本機字幕播放室</h1>
+        </div>
+        <span id="runtime-badge" class="runtime-badge">INITIALIZING</span>
+      </header>
 
-    <div class="player-wrap">
-      <video id="player" playsinline controls>
-        <source src="video.mp4" type="video/mp4" />
-      </video>
-      <div id="custom-caption" class="custom-caption" aria-live="polite" hidden></div>
-    </div>
+      <section class="player-shell" aria-label="本機影片播放器">
+        <div class="player-wrap">
+          <video id="player" playsinline controls preload="metadata"></video>
+          <div id="custom-caption" class="custom-caption" aria-live="polite" hidden></div>
+        </div>
 
-    <p id="status" class="status">正在載入本機影片與字幕……</p>
-    <div class="caption-control">
-      <label for="caption-language">字幕</label>
-      <select id="caption-language">
-        <option value="zh-TW" selected>繁體中文</option>
-        <option value="en">English</option>
-      </select>
-      <span id="caption-status">正在載入……</span>
-    </div>
+        <div class="control-deck">
+          <div class="status-panel">
+            <span class="label">Playback status</span>
+            <p id="status" class="status">正在讀取影片設定……</p>
+          </div>
 
+          <div class="caption-panel">
+            <label class="label" for="caption-language">Subtitle track</label>
+            <div class="caption-row">
+              <select id="caption-language" aria-describedby="caption-status"></select>
+              <span id="caption-status" class="caption-status">等待載入</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <footer class="footnote">
+        <span>HTTP REQUIRED · VTT SYNCED LOCALLY</span>
+        <span id="engine-label">ENGINE · NATIVE VIDEO</span>
+      </footer>
+    </main>
+
+    <script src="config.js"></script>
     <script src="https://cdn.plyr.io/3.8.4/plyr.js"></script>
     <script>
-      const video = document.querySelector("#player");
-      const status = document.querySelector("#status");
-      const captionBox = document.querySelector("#custom-caption");
-      const captionLanguage = document.querySelector("#caption-language");
-      const captionStatus = document.querySelector("#caption-status");
-      const captionSources = {
-        "zh-TW": "captions.zh-TW.vtt",
-        en: "captions.en.vtt",
-      };
+      (() => {
+        "use strict";
 
-      let activeCues = [];
+        const defaults = {
+          title: "本機字幕播放室",
+          kicker: "Local screening · transcript edition",
+          video: { src: "video.mp4", type: "video/mp4" },
+          defaultLanguage: "zh-TW",
+          captions: [
+            { code: "zh-TW", label: "繁體中文", src: "captions.zh-TW.vtt" },
+            { code: "en", label: "English", src: "captions.en.vtt" },
+          ],
+        };
 
-      function parseTimecode(value) {
-        const parts = value.trim().replace(",", ".").split(":");
-        if (parts.length === 2) parts.unshift("0");
-        return Number(parts[0]) * 3600 + Number(parts[1]) * 60 + Number(parts[2]);
-      }
+        const supplied = window.YOUTUBE_CAPTION_PLAYER_CONFIG || {};
+        const config = {
+          ...defaults,
+          ...supplied,
+          video: { ...defaults.video, ...(supplied.video || {}) },
+          captions: Array.isArray(supplied.captions) ? supplied.captions : defaults.captions,
+        };
 
-      function cleanCueText(value) {
-        const container = document.createElement("div");
-        container.innerHTML = value
-          .replace(/<\/?c(?:\.[^>]*)?>/g, "")
-          .replace(/<\d{2}:\d{2}(?::\d{2})?\.\d{3}>/g, "");
-        return (container.textContent || "").replace(/\s+/g, " ").trim();
-      }
+        const video = document.querySelector("#player");
+        const status = document.querySelector("#status");
+        const pageTitle = document.querySelector("#page-title");
+        const kicker = document.querySelector("#kicker");
+        const runtimeBadge = document.querySelector("#runtime-badge");
+        const engineLabel = document.querySelector("#engine-label");
+        const captionBox = document.querySelector("#custom-caption");
+        const captionLanguage = document.querySelector("#caption-language");
+        const captionStatus = document.querySelector("#caption-status");
 
-      // Supports YouTube VTT files that put blank lines between timing and text.
-      function parseVtt(source) {
-        const lines = source.replace(/\r/g, "").split("\n");
-        const cues = [];
+        let activeCues = [];
+        let lastCueIndex = -1;
+        let animationFrame = 0;
 
-        for (let index = 0; index < lines.length; index += 1) {
-          const timing = lines[index].match(/^(\S+)\s+-->\s+(\S+)/);
-          if (!timing) continue;
+        document.title = config.title;
+        pageTitle.textContent = config.title;
+        kicker.textContent = config.kicker;
+        const videoSource = document.createElement("source");
+        videoSource.src = config.video.src;
+        if (config.video.type) videoSource.type = config.video.type;
+        video.append(videoSource);
 
-          const textLines = [];
-          let nextIndex = index + 1;
-          while (
-            nextIndex < lines.length &&
-            !/^\S+\s+-->\s+\S+/.test(lines[nextIndex])
-          ) {
-            if (lines[nextIndex].trim()) textLines.push(lines[nextIndex]);
-            nextIndex += 1;
+        const offOption = new Option("關閉字幕", "off");
+        captionLanguage.add(offOption);
+        config.captions.forEach((track) => {
+          captionLanguage.add(new Option(track.label, track.code));
+        });
+
+        function parseTimecode(value) {
+          const parts = value.trim().replace(",", ".").split(":");
+          if (parts.length === 2) parts.unshift("0");
+          if (parts.length !== 3) return Number.NaN;
+          return Number(parts[0]) * 3600 + Number(parts[1]) * 60 + Number(parts[2]);
+        }
+
+        function cleanCueText(value) {
+          const container = document.createElement("div");
+          container.innerHTML = value
+            .replace(/<\/?c(?:\.[^>]*)?>/g, "")
+            .replace(/<\d{2}:\d{2}(?::\d{2})?\.\d{3}>/g, "");
+          return (container.textContent || "").replace(/\s+/g, " ").trim();
+        }
+
+        function parseVtt(source) {
+          const lines = source.replace(/^\uFEFF/, "").replace(/\r/g, "").split("\n");
+          const cues = [];
+
+          for (let index = 0; index < lines.length; index += 1) {
+            const timing = lines[index].match(/^(\S+)\s+-->\s+(\S+)/);
+            if (!timing) continue;
+
+            const textLines = [];
+            let nextIndex = index + 1;
+            while (nextIndex < lines.length && !/^\S+\s+-->\s+\S+/.test(lines[nextIndex])) {
+              const line = lines[nextIndex].trim();
+              if (line && !line.startsWith("NOTE")) textLines.push(lines[nextIndex]);
+              nextIndex += 1;
+            }
+
+            const start = parseTimecode(timing[1]);
+            const end = parseTimecode(timing[2]);
+            const text = cleanCueText(textLines.join("\n"));
+            if (text && Number.isFinite(start) && Number.isFinite(end) && end > start) {
+              cues.push({ start, end, text });
+            }
+            index = nextIndex - 1;
           }
 
-          const text = cleanCueText(textLines.join("\n"));
-          const start = parseTimecode(timing[1]);
-          const end = parseTimecode(timing[2]);
-          if (text && end > start) cues.push({ start, end, text });
-          index = nextIndex - 1;
+          return cues.sort((a, b) => a.start - b.start);
         }
 
-        return cues;
-      }
+        function findCueIndex(currentTime) {
+          if (
+            lastCueIndex >= 0 &&
+            activeCues[lastCueIndex] &&
+            currentTime >= activeCues[lastCueIndex].start &&
+            currentTime < activeCues[lastCueIndex].end
+          ) {
+            return lastCueIndex;
+          }
 
-      function updateCaption() {
-        const currentTime = video.currentTime || 0;
-        const currentCue = activeCues.find(
-          (cue) => currentTime >= cue.start && currentTime < cue.end
-        );
-        const text = currentCue?.text || "";
-        captionBox.textContent = text;
-        captionBox.hidden = !text;
-      }
+          let low = 0;
+          let high = activeCues.length - 1;
+          while (low <= high) {
+            const middle = Math.floor((low + high) / 2);
+            const cue = activeCues[middle];
+            if (currentTime < cue.start) high = middle - 1;
+            else if (currentTime >= cue.end) low = middle + 1;
+            else return middle;
+          }
+          return -1;
+        }
 
-      async function loadCaptions(language) {
-        captionBox.hidden = true;
-        captionStatus.textContent = "正在載入字幕……";
-        const response = await fetch(captionSources[language]);
-        if (!response.ok) throw new Error(`字幕載入失敗：${response.status}`);
-        activeCues = parseVtt(await response.text());
-        captionStatus.textContent = `${activeCues.length} 段字幕已載入`;
-        updateCaption();
-      }
+        function updateCaption() {
+          const cueIndex = findCueIndex(video.currentTime || 0);
+          lastCueIndex = cueIndex;
+          const text = cueIndex >= 0 ? activeCues[cueIndex].text : "";
+          captionBox.textContent = text;
+          captionBox.hidden = !text;
+        }
 
-      const player = new Plyr(video, { ratio: "16:9", captions: { active: false } });
+        function followPlayback() {
+          updateCaption();
+          if (!video.paused && !video.ended) {
+            animationFrame = requestAnimationFrame(followPlayback);
+          }
+        }
 
-      player.on("ready", () => {
-        status.textContent = "播放器已建立；按播放後字幕會同步顯示。";
-      });
-      player.on("playing", () => {
-        status.textContent = "播放中。";
-      });
-      player.on("error", () => {
-        status.textContent = "影片載入失敗，請確認 video.mp4 存在且使用 HTTP 開啟。";
-      });
-      player.on("timeupdate", updateCaption);
-      player.on("seeking", updateCaption);
-      window.setInterval(updateCaption, 100);
+        function setCaptionMessage(message, isError = false) {
+          captionStatus.textContent = message;
+          captionStatus.dataset.error = String(isError);
+        }
 
-      captionLanguage.addEventListener("change", async () => {
-        try {
-          await loadCaptions(captionLanguage.value);
-        } catch (error) {
-          captionStatus.textContent = error.message;
+        async function loadCaptions(language) {
+          cancelAnimationFrame(animationFrame);
           captionBox.hidden = true;
-        }
-      });
+          lastCueIndex = -1;
 
-      loadCaptions("zh-TW").catch((error) => {
-        captionStatus.textContent = error.message;
-      });
+          if (language === "off") {
+            activeCues = [];
+            setCaptionMessage("已關閉");
+            return;
+          }
+
+          const track = config.captions.find((item) => item.code === language);
+          if (!track) throw new Error(`找不到字幕設定：${language}`);
+
+          setCaptionMessage("正在載入……");
+          const response = await fetch(track.src, { cache: "no-store" });
+          if (!response.ok) throw new Error(`字幕載入失敗：HTTP ${response.status}`);
+
+          activeCues = parseVtt(await response.text());
+          if (!activeCues.length) throw new Error("字幕檔沒有可用的 VTT cue");
+
+          setCaptionMessage(`${activeCues.length} 段已就緒`);
+          updateCaption();
+        }
+
+        function setPlaybackStatus(message, badge) {
+          status.textContent = message;
+          runtimeBadge.textContent = badge;
+        }
+
+        let player = null;
+        if (typeof window.Plyr === "function") {
+          player = new window.Plyr(video, { ratio: "16:9", captions: { active: false } });
+          engineLabel.textContent = "ENGINE · PLYR + NATIVE FALLBACK";
+          player.on("ready", () => setPlaybackStatus("播放器與字幕介面已建立。", "READY"));
+          player.on("error", () => setPlaybackStatus("影片載入失敗，請檢查檔名、codec 與 HTTP server。", "ERROR"));
+        } else {
+          engineLabel.textContent = "ENGINE · NATIVE FALLBACK";
+          setPlaybackStatus("Plyr 無法載入，已改用瀏覽器原生播放控制。", "FALLBACK" );
+        }
+
+        video.addEventListener("loadedmetadata", () => {
+          const duration = Number.isFinite(video.duration) ? Math.round(video.duration) : 0;
+          setPlaybackStatus(`影片已載入，長度約 ${duration} 秒。`, "READY");
+        });
+        video.addEventListener("playing", () => {
+          setPlaybackStatus("播放中；字幕依本機時間軸同步。", "PLAYING");
+          cancelAnimationFrame(animationFrame);
+          animationFrame = requestAnimationFrame(followPlayback);
+        });
+        video.addEventListener("pause", () => {
+          cancelAnimationFrame(animationFrame);
+          updateCaption();
+          if (!video.ended) setPlaybackStatus("已暫停。", "PAUSED");
+        });
+        video.addEventListener("seeking", updateCaption);
+        video.addEventListener("timeupdate", updateCaption);
+        video.addEventListener("ended", () => setPlaybackStatus("播放完畢。", "ENDED"));
+        video.addEventListener("error", () => setPlaybackStatus("影片載入失敗；請確認 video.mp4 存在並透過 HTTP 開啟。", "ERROR"));
+
+        captionLanguage.addEventListener("change", async () => {
+          try {
+            await loadCaptions(captionLanguage.value);
+          } catch (error) {
+            activeCues = [];
+            captionBox.hidden = true;
+            setCaptionMessage(error.message, true);
+          }
+        });
+
+        const configuredDefault = config.captions.some((track) => track.code === config.defaultLanguage)
+          ? config.defaultLanguage
+          : config.captions[0]?.code || "off";
+        captionLanguage.value = configuredDefault;
+        loadCaptions(configuredDefault).catch((error) => setCaptionMessage(error.message, true));
+      })();
     </script>
   </body>
 </html>

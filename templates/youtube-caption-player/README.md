@@ -1,27 +1,80 @@
 # YouTube 本機字幕播放器模板
 
-這個模板以 Plyr 播放本機 MP4，並用外部 VTT 字幕依影片時間同步顯示繁體中文翻譯。
+這是一個不需要建置工具的靜態播放器。它播放本機 MP4，以 JavaScript 讀取外部 VTT，並依影片時間切換繁體中文與英文字幕。Plyr 提供主要控制介面；CDN 無法使用時會退回瀏覽器原生 `<video controls>`。
 
-## 固定檔名
+## 完成資料夾
 
-把以下檔案放在 `index.html` 同一層：
-
-- `video.mp4`：影片檔
-- `captions.zh-TW.vtt`：繁體中文字幕
-- `captions.en.vtt`：英文字幕，通常可放 Whisper 產生的 VTT
-
-播放器預設載入繁體中文，也可以從下方選單切換英文。
-
-## 使用方式
-
-```bash
-python3 -m http.server 8000
+```text
+player/
+├── index.html
+├── config.js
+├── video.mp4
+├── captions.zh-TW.vtt
+├── captions.en.vtt
+└── media-info.txt                  # prepare-player.sh 產生的檢查資訊
 ```
 
-接著開啟 <http://localhost:8000/index.html>。
+固定檔名是預設值，不是硬限制；可以在 `config.js` 修改影片和字幕來源。
 
-不要直接用 `file://` 開啟，因為瀏覽器會阻擋字幕 VTT 的 `fetch`。
+## 從完全沒有工具開始
 
-## 與本次流程的關係
+如果還沒有影片、字幕、Python、FFmpeg、yt-dlp 或 Whisper，請從 [YouTube 本機字幕流程](../../playbooks/youtube-local-caption/PLAYBOOK.md) 開始。該流程會先檢查環境，再把工具安裝到隔離的工作資料夾，並提供完整移除方式。
 
-本模板只負責播放與字幕顯示；影片下載、YouTube 自動字幕、翻譯與 Whisper 轉錄，請依照 `playbooks/youtube-local-caption-workflow.md` 執行。
+如果已經有上面五個檔案，只需要一個本機 HTTP server。可以使用 playbook 安裝的 Python：
+
+```bash
+playbooks/youtube-local-caption/scripts/serve-player.sh \
+  <workspace> \
+  <player-directory> \
+  8000
+```
+
+也可以使用電腦上既有的 Python：
+
+```bash
+python3 -m http.server 8000 --bind 127.0.0.1 --directory <player-directory>
+```
+
+接著開啟 <http://127.0.0.1:8000/>。不要直接以 `file://` 雙擊 HTML，瀏覽器可能會阻擋 VTT 的 `fetch`。
+
+## 設定
+
+`config.js` 支援：
+
+- `title`：瀏覽器標題與頁面主標
+- `kicker`：主標上方的小字
+- `video.src` 與 `video.type`：影片路徑和 MIME type
+- `defaultLanguage`：首次載入的字幕代碼
+- `captions`：字幕代碼、顯示名稱和 VTT 路徑
+
+新增字幕時，把 VTT 放進播放器資料夾，再增加一個 `captions` 項目。字幕必須使用 UTF-8、以 `WEBVTT` 開頭，而且至少含一組有效時間戳。
+
+## 首次驗證
+
+- [ ] HTTP server terminal 沒有 `404`
+- [ ] 影片可播放且有聲音
+- [ ] 頁面顯示的影片長度合理
+- [ ] 預設字幕顯示 cue 數，不是 0
+- [ ] 字幕選單可切換繁中、英文與關閉
+- [ ] 拖曳到中段和末段後字幕仍同步
+- [ ] 斷網重新整理時，原生播放器仍能播放本機影片
+
+## 日常使用
+
+再次使用只要重新啟動 HTTP server，不需要重新安裝工具。換影片時建議建立新的 `jobs/<video-id>/player/`，不要直接覆蓋仍需保留的上一支影片。
+
+播放器使用固定命名的版本可由 `prepare-player.sh` 建立；它會先驗證 VTT 和媒體，再複製模板與素材。
+
+## 更新模板
+
+先保留自己的 `video.mp4`、VTT 和 `config.js`，再從 repository 更新 `index.html`。若新版 `config.js` 結構改變，先比較差異，不直接覆蓋自訂設定。
+
+## 停止與移除
+
+1. 回到 HTTP server terminal 按 `Ctrl+C`。
+2. 只要停止使用，不需要刪除任何檔案。
+3. 要移除播放器時，先確認資料夾內是否有唯一一份影片或字幕備份，再刪除精確的 player 目錄。
+4. 要同時移除 Whisper、yt-dlp、uv、Deno、模型與快取，使用 playbook 的 `uninstall.sh` 先做 dry run。
+5. Plyr 由 CDN 載入，沒有在電腦安裝全域套件；不需要另外 uninstall。
+
+使用者影片、字幕和翻譯是產物，預設不會跟著工具移除。
